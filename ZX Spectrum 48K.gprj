@@ -1,0 +1,27 @@
+<?xml version="1" encoding="UTF-8"?>
+<!DOCTYPE gowin-fpga-project>
+<Project>
+    <Template>FPGA</Template>
+    <Version>5</Version>
+    <Device name="GW5AST-138B" pn="GW5AST-LV138PG484AC1/I0">gw5ast138b-011</Device>
+    <FileList>
+        <File path="src/MEM/ZX Spectrum MEM.v" type="file.verilog" enable="1"/>
+        <File path="src/SD/ZX Spectrum SD.v" type="file.verilog" enable="1"/>
+        <File path="src/ULA/CLK/ZX Spectrum CLK.v" type="file.verilog" enable="1"/>
+        <File path="src/ULA/DVI/ZX Spectrum DVI.v" type="file.verilog" enable="1"/>
+        <File path="src/ULA/USB/ZX Spectrum USB CLK.v" type="file.verilog" enable="1"/>
+        <File path="src/ULA/USB/ZX Spectrum USB.v" type="file.verilog" enable="1"/>
+        <File path="src/ULA/USB/usb_hid_host.v" type="file.verilog" enable="1"/>
+        <File path="src/ULA/USB/usb_hid_host_rom.v" type="file.verilog" enable="1"/>
+        <File path="src/ULA/ZX Spectrum PAL.v" type="file.verilog" enable="1"/>
+        <File path="src/ULA/ZX Spectrum ULA.v" type="file.verilog" enable="1"/>
+        <File path="src/Z80/Z80.v" type="file.verilog" enable="1"/>
+        <File path="src/Z80/Z80_ALU.v" type="file.verilog" enable="1"/>
+        <File path="src/Z80/Z80_CC.v" type="file.verilog" enable="1"/>
+        <File path="src/Z80/Z80_Incrementer.v" type="file.verilog" enable="1"/>
+        <File path="src/Z80/Z80_Registers.v" type="file.verilog" enable="1"/>
+        <File path="src/ZX Spectrum.v" type="file.verilog" enable="1"/>
+        <File path="src/ZX Spectrum 48K.cst" type="file.cst" enable="1"/>
+        <File path="src/ZX Spectrum 48K.sdc" type="file.sdc" enable="1"/>
+    </FileList>
+</Project>

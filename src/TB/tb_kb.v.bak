@@ -1,0 +1,42 @@
+
+////////////////////////////////////////////////////////////////////////
+
+module top(
+
+	input mem_clk								// 28MHz clock
+
+);
+
+typedef struct packed {
+    reg KCAP;
+    reg [36:0]KBIT;
+    reg KSYM;
+    reg KSPC;
+} KDATA;
+
+typedef union packed {
+    reg [ 0: 7][ 4: 0] INP;
+	KDATA EXP;
+} KBD_INP;
+
+KBD_INP KBD;
+
+initial begin
+
+    KBD = 40'b00001_00010_00100_01000_10000_10001_11111_00111;
+
+	$display("INP[0] = %b", KBD.INP[0]);
+	$display("INP[1] = %b", KBD.INP[1]);
+	$display("INP[2] = %b", KBD.INP[2]);
+	$display("INP[3] = %b", KBD.INP[3]);
+	$display("INP[4] = %b", KBD.INP[4]);
+	$display("INP[5] = %b", KBD.INP[5]);
+	$display("INP[6] = %b", KBD.INP[6]);
+	$display("INP[7] = %b", KBD.INP[7]);
+
+	$display("KCAP = %b", KBD.EXP.KCAP);
+
+end
+
+
+endmodule
