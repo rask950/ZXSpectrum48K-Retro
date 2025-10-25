@@ -7,7 +7,7 @@ module ZX_Spectrum_ULA(
 	output				CLK_14,						// 14MHz (MEM)
 	output				CLK_7,						//  7MHz (CPU)
 
-	input				RESET,						// reset signal
+	output				RESET,						// reset signal
 
 	output		[ 7: 0] PAGING,						// Paging register
 
@@ -25,17 +25,17 @@ module ZX_Spectrum_ULA(
 	output				CPU_INT,
 	output				CPU_WAIT,
 
-    // Physical connections
+	// Physical connections
 
 	input  		[ 5: 0] IO_IN,						// Input port FE - AUDIO IN/KB
 	output 		[ 1: 0] IO_OUT,						// Output port FE - MIC & SPEAKER
 
-    output      [ 1: 0] LED,
+	output		[ 1: 0] LED,
 
-    inout       USB0_DP,
-    inout       USB0_DN,
-    inout       USB1_DP,
-    inout       USB1_DN,
+	inout				USB0_DP,					// USB ports
+	inout				USB0_DN,
+	inout				USB1_DP,
+	inout				USB1_DN,
 
 	output		[ 2: 0] TMDSp,						// DVI Output
 	output		[ 2: 0] TMDSn,
@@ -52,30 +52,30 @@ localparam TRUE  = 1'b1;
 ////////////////////////////////////////////////////////////////////////
 // ULA IO port regs
 
-reg [7:0]IO_PORT_ULA;							// ULA's only IO port
-reg	[7:0]IO_PORT_MEM;							// Memory paging register
+reg [7:0]IO_PORT_ULA;								// ULA's only IO port
+reg	[7:0]IO_PORT_MEM;								// Memory paging register
 
 assign PAGING = IO_PORT_MEM;
 
 initial begin
 
 	IO_PORT_ULA = 0;
-	IO_PORT_MEM = 0; //8'b01010000;				  // Default page-in SD card mem
+	IO_PORT_MEM = 0; //8'b01010000;					// Default page-in SD card mem
 
 end
 
 ////////////////////////////////////////////////////////////////////////
-// Clock generator
+// Main clock generator
 
-wire CLK_140;									// For DVI output (internal)
+wire CLK_140;										// For DVI output (internal)
 
 ZX_Spectrum_CLK zclk(
-	.clkin(SYS_CLK),							// Input clock 28MHz
+	.clkin(SYS_CLK),								// Input clock 28MHz
 	.reset(1'b0),
-	.clkout0(CLK_28),					 		// Output clk 28MHz 
-	.clkout1(CLK_140),					 		// Output clk 140MHz
-	.clkout2(CLK_14),							// Output clk 14MHz
-	.clkout3(CLK_7)						 		// Output clk 7MHz
+	.clkout0(CLK_28),					 			// Output clk 28MHz 
+	.clkout1(CLK_140),					 			// Output clk 140MHz
+	.clkout2(CLK_14),								// Output clk 14MHz
+	.clkout3(CLK_7)						 			// Output clk 7MHz
 );
 
 ////////////////////////////////////////////////////////////////////////
@@ -142,7 +142,7 @@ end
 ZX_Spectrum_DVI dvi(
 
 	.CLK_PIXEL(	 CLK_28),						// 28MHz DVI pixel clock
-	.CLK_SERIAL( CLK_140),					  // 140MHz DVI serial bit shift
+	.CLK_SERIAL( CLK_140),						// 140MHz DVI serial bit shift
 
 	.RESET(		 1'b1),							// RESET (active low)
 
@@ -186,20 +186,20 @@ always @(posedge CLK_28) begin
 
 	DVI_INT			<= (DVI_Y == 0 && DVI_X < INT_X_END);
 
-	DVI_ENABLE	    <= (DVI_X < DISPLAY_WIDTH)	&& (DVI_Y < DISPLAY_HEIGHT);	// Set DVI_ENABLE when counters within visible region
+	DVI_ENABLE		<= (DVI_X < DISPLAY_WIDTH)	&& (DVI_Y < DISPLAY_HEIGHT);	// Set DVI_ENABLE when counters within visible region
 
 	DVI_HSYNC		<= (DVI_X > DVI_HSYNC_START) && (DVI_X < DVI_HSYNC_END);		// Period where horizontal sync is active
 
 	DVI_VSYNC		<= (DVI_Y > DVI_VSYNC_START) && (DVI_Y < DVI_VSYNC_END);		// and vertical sync
 
 	PIXEL_ENABLE	<= (DVI_Y >= SPEC_VSTART && DVI_Y < SPEC_VEND) &&			// Flag for output pixels / border colour
-					   (DVI_X >= SPEC_HSTART && DVI_X < SPEC_HEND);
+						(DVI_X >= SPEC_HSTART && DVI_X < SPEC_HEND);
 
-	PIXEL_READ	    <= (DVI_Y >= SPEC_VSTART && DVI_Y < SPEC_VEND) &&			// Flag to begin pixel read from buffer - 1 pixel before output enable
-					   (DVI_X >= SPEC_HSTART - 2 && DVI_X < SPEC_HEND - 2);
+	PIXEL_READ		<= (DVI_Y >= SPEC_VSTART && DVI_Y < SPEC_VEND) &&			// Flag to begin pixel read from buffer - 1 pixel before output enable
+						(DVI_X >= SPEC_HSTART - 2 && DVI_X < SPEC_HEND - 2);
 
-	DMA_RD_ENABLE   <= (DVI_Y >= SPEC_DSTART && DVI_Y < SPEC_DEND) &&				// DMA active 1 SPECTRUM pixel row before display output
-					   (DVI_X >= SPEC_HSTART && DVI_X < SPEC_HEND);
+	DMA_RD_ENABLE	<= (DVI_Y >= SPEC_DSTART && DVI_Y < SPEC_DEND) &&				// DMA active 1 SPECTRUM pixel row before display output
+						(DVI_X >= SPEC_HSTART && DVI_X < SPEC_HEND);
 
 end
 
@@ -291,13 +291,13 @@ always @ (posedge CLK_7) begin
 
 	if (RESET) begin
 		IO_PORT_ULA <= 8'd0;
-		IO_PORT_MEM <= 8'b00010000;											    // Page in SD ROM and unlock
+		IO_PORT_MEM <= 8'b00010000;												// Page in SD ROM and unlock
 	end
 
 	if (~(CPU_IORQ | CPU_WR)) begin												// IO Port write
 
-		if (  ~CPU_ADDRESS[IO_PORT1])					IO_PORT_ULA <= CPU_WR_DATA;	    // Standard spectrum IO					
-		if ( ~(CPU_ADDRESS[IO_PORT2] | IO_PORT_MEM[5])) IO_PORT_MEM <= CPU_WR_DATA;	    // 128K Memory paging register
+		if (  ~CPU_ADDRESS[IO_PORT1])					IO_PORT_ULA <= CPU_WR_DATA;		// Standard spectrum IO					
+		if ( ~(CPU_ADDRESS[IO_PORT2] | IO_PORT_MEM[5])) IO_PORT_MEM <= CPU_WR_DATA;		// 128K Memory paging register
 
 	end
 
@@ -344,11 +344,11 @@ assign CPU_RD_DATA = ~(CPU_IORQ | CPU_RD | CPU_ADDRESS[IO_PORT1]) ? { 1'b1, IO_I
 
 assign CPU_RD_DATA = ~(CPU_IORQ | CPU_RD | CPU_ADDRESS[IO_PORT2]) ? IO_PORT_MEM						  	 : 8'bz;
 
-assign IO_OUT		= IO_PORT_ULA[4:3];											    // Audio output bits
+assign IO_OUT		= IO_PORT_ULA[4:3];												// Audio output bits
 
-assign CPU_WAIT	    = ~BYTES[3] | CPU_MREQ | CPU_ADDRESS[15] | ~CPU_ADDRESS[14]; 	// Mimic memory contention using WAIT
+assign CPU_WAIT		= ~BYTES[3] | CPU_MREQ | CPU_ADDRESS[15] | ~CPU_ADDRESS[14]; 	// Mimic memory contention using WAIT
 
-assign CPU_INT		= ~DVI_INT;													    // CPU Interrupt is active low
+assign CPU_INT		= ~DVI_INT;														// CPU Interrupt is active low
 
 ////////////////////////////////////////////////////////////////////////
 // USB
@@ -366,8 +366,8 @@ reg [39: 0] KBD_DATA [ 0:255];
 initial begin
 
 	KBIT = 40'b0;
-    KCAP = 1'b0;
-    KSYM = 1'b0;
+	KCAP = 1'b0;
+	KSYM = 1'b0;
 
 	$readmemb("usb_kb_lookup.bin", KBD_DATA);
 
@@ -376,29 +376,31 @@ end
 function automatic [ 4: 0] USB_IO(
 	input [ 7: 0] port
 );
-	if (!port[0]) return { KBIT.BIT[0][4:1], KBIT.BIT[0][0] | (KCAP & KSYM) };
-    if (!port[1]) return   KBIT.BIT[1];
-    if (!port[2]) return   KBIT.BIT[2];
-    if (!port[3]) return   KBIT.BIT[3];
-    if (!port[4]) return   KBIT.BIT[4];
-    if (!port[5]) return   KBIT.BIT[5];
-    if (!port[6]) return   KBIT.BIT[6];
-    if (!port[7]) return { KBIT.BIT[7][4:2], KBIT.BIT[7][1] | KSYM, KBIT.BIT[7][0] };
+	reg [4:0]v = 0;
 
-	return 5'b0;
+	if (!port[0]) v = v | { KBIT.BIT[0][4:1], KBIT.BIT[0][0] | (KCAP & (KBIT == 0)) };
+	if (!port[1]) v = v | 	KBIT.BIT[1];
+	if (!port[2]) v = v | 	KBIT.BIT[2];
+	if (!port[3]) v = v | 	KBIT.BIT[3];
+	if (!port[4]) v = v | 	KBIT.BIT[4];
+	if (!port[5]) v = v | 	KBIT.BIT[5];
+	if (!port[6]) v = v | 	KBIT.BIT[6];
+	if (!port[7]) v = v | { KBIT.BIT[7][4:2], KBIT.BIT[7][1] | KSYM, KBIT.BIT[7][0] };
+
+	return v;
 
 endfunction
 
-wire CLK_12;									                                    // USB clock
+wire CLK_12;																		// USB clock
 
 ZX_Spectrum_USB_CLK uclk (
-    .clkin(         SYS_CLK),
-    .clkout0(       CLK_12)
+	.clkin(		SYS_CLK),
+	.clkout0(	CLK_12)
 );
 
 reg [ 1: 0] USB0_TYP;
-reg         USB0_REPORT;
-reg         USB0_ERR;
+reg			USB0_REPORT;
+reg			USB0_ERR;
 
 reg [ 7: 0] USB0_KMOD;
 reg [ 7: 0] USB0_KEY[0:3];
@@ -407,21 +409,21 @@ reg [15: 0] USB0_GAME;
 
 ZX_Spectrum_USB usb0 (
 
-    .USB_CLK(       CLK_12),
-    .USB_DP(        USB0_DP),
-    .USB_DN(        USB0_DN),
+	.USB_CLK(		CLK_12),
+	.USB_DP(		USB0_DP),
+	.USB_DN(		USB0_DN),
 
-    .USB_TYP(       USB0_TYP),
-    .USB_ERR(       USB0_ERR),
-    .USB_REPORT(    USB0_REPORT),
-    .USB_KMOD(      USB0_KMOD),
-    .USB_KEY(       USB0_KEY),
-    .USB_GAME(      USB0_GAME)
+	.USB_TYP(		USB0_TYP),
+	.USB_ERR(		USB0_ERR),
+	.USB_REPORT(	USB0_REPORT),
+	.USB_KMOD(	  	USB0_KMOD),
+	.USB_KEY(		USB0_KEY),
+	.USB_GAME(	  	USB0_GAME)
 );
 
 reg [ 1: 0] USB1_TYP;
-reg         USB1_REPORT;
-reg         USB1_ERR;
+reg		 USB1_REPORT;
+reg		 USB1_ERR;
 
 reg [ 7: 0] USB1_KMOD;
 reg [ 7: 0] USB1_KEY[0:3];
@@ -430,25 +432,29 @@ reg [15: 0] USB1_GAME;
 
 ZX_Spectrum_USB usb1 (
 
-    .USB_CLK(       CLK_12),
-    .USB_DP(        USB1_DP),
-    .USB_DN(        USB1_DN),
+	.USB_CLK(		CLK_12),
+	.USB_DP(		USB1_DP),
+	.USB_DN(		USB1_DN),
 
-    .USB_TYP(       USB1_TYP),
-    .USB_ERR(       USB1_ERR),
-    .USB_REPORT(    USB1_REPORT),
-    .USB_KMOD(      USB1_KMOD),
-    .USB_KEY(       USB1_KEY),
-    .USB_GAME(      USB1_GAME)
+	.USB_TYP(		USB1_TYP),
+	.USB_ERR(		USB1_ERR),
+	.USB_REPORT(	USB1_REPORT),
+	.USB_KMOD(	 	USB1_KMOD),
+	.USB_KEY(		USB1_KEY),
+	.USB_GAME(		USB1_GAME)
 );
 
 assign LED = USB1_TYP;
 
-assign KCAP = USB1_KMOD & 8'h22 ? 1'b1 : 1'b0;
-assign KSYM = USB1_KMOD & 8'h11 ? 1'b1 : 1'b0;
-assign KBIT = KBD_DATA[ { KCAP, USB1_KEY[0][6:0] }];
+assign KCAP =	USB1_KMOD & 8'h22 ? 1'b1 : 1'b0;
+assign KSYM =	USB1_KMOD & 8'h11 ? 1'b1 : 1'b0;
+assign KBIT =	KBD_DATA[ { KCAP, USB1_KEY[0][6:0] }] |
+				KBD_DATA[ { KCAP, USB1_KEY[1][6:0] }] |
+				KBD_DATA[ { KCAP, USB1_KEY[2][6:0] }] |
+				KBD_DATA[ { KCAP, USB1_KEY[3][6:0] }];
 
 assign CPU_RD_DATA = CPU_ADDRESS[7:0] == 8'd31 && ~(CPU_IORQ | CPU_RD) ? USB1_KMOD : 8'bz;
 
+assign RESET = USB1_KMOD[1] & USB1_KMOD[2] & USB1_KMOD[6];
 
 endmodule

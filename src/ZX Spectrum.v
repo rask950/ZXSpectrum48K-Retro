@@ -4,7 +4,6 @@
 module top(
 
 	input SYS_CLK,								// 28MHz clock
-	input BTN1,									// Reset button
 
 	input  [5:0]EXT_IN_PORT,					// Half row KB + AUDIO input port
 	output [1:0]EXT_OUT_PORT,					// MIC/SPEAKER AUDIO output
@@ -39,6 +38,7 @@ reg [ 7:0]ULA_RD_DATA;
 reg [15:0]ULA_ADDRESS;
 reg		  ULA_RD;
 reg [ 7:0]ULA_PAGING;							// Memory paging control
+wire 	  ULA_RESET;
 
 ////////////////////////////////////////////////////////////////////////
 // SD control and data buses for DMA
@@ -60,10 +60,10 @@ reg		  CPU_WR;
 reg		  CPU_RFSH;
 reg		  CPU_INT;
 reg		  CPU_WAIT;
-reg       CPU_HALT;
+reg		CPU_HALT;
 
 ////////////////////////////////////////////////////////////////////////
-// Clocks for memory 14MHz (for ULA) and CPU (7MHz)
+// Clocks for memory 14MHz (for ULA), CPU (7MHz) and SD Card (28MHz)
 
 wire MEM_CLK;
 wire CPU_CLK;
@@ -80,14 +80,14 @@ assign EXT_ADDRESS_BUS = CPU_ADDRESS[15:8];
 ZX_Spectrum_MEM mem(
 
 	.CLK(			MEM_CLK),
-	.RESET(			~BTN1),
+	.RESET(			ULA_RESET),
 	.PAGING(		ULA_PAGING),
 
 	.ULA_ADDRESS(	ULA_ADDRESS),					// ULA DMA - memory port A, page 1
 	.ULA_RD_DATA(	ULA_RD_DATA),
 	.ULA_RD(		ULA_RD),
 
-	.SD_ADDRESS(	SD_ADDRESS),				  // SD DMA - memory port A, page 4
+	.SD_ADDRESS(	SD_ADDRESS),				  	// SD DMA - memory port A, page 4
 	.SD_WR_DATA(	SD_WR_DATA),
 	.SD_WR(			SD_WR_EN),
 
@@ -105,7 +105,7 @@ ZX_Spectrum_MEM mem(
 ZX_Spectrum_Z80 z80(
 
 	.CLK(			CPU_CLK),
-	.RESET(			~BTN1),
+	.RESET(			ULA_RESET),
 
 	.DATA_IN(		CPU_RD_DATA),
 	.DATA_OUT(		CPU_WR_DATA),
@@ -121,7 +121,7 @@ ZX_Spectrum_Z80 z80(
 	.WR(			CPU_WR),
 	.RFSH(			CPU_RFSH),
 	.WAIT(			CPU_WAIT),
-    .HALT(          CPU_HALT)
+	.HALT(			CPU_HALT)
 );
 
 ////////////////////////////////////////////////////////////////////////
@@ -136,14 +136,14 @@ ZX_Spectrum_ULA #(
 
 	.SYS_CLK(		SYS_CLK),					// Master clock in 50MHz
 
-	.CLK_28(		SDC_CLK),
-	.CLK_14(		MEM_CLK),					// Clocks out from ULA
+	.CLK_28(		SDC_CLK),					// Clocks out from ULA
+	.CLK_14(		MEM_CLK),
 	.CLK_7(		 	CPU_CLK),
 
 	.IO_IN(			EXT_IN_PORT),				// Physical IO
 	.IO_OUT(		EXT_OUT_PORT),
 
-	.RESET(		 	~BTN1),						// Reset button
+	.RESET(		 	ULA_RESET),					// Reset signal from ULA
 
 	.PAGING(		ULA_PAGING),				// Memory paging
 
@@ -161,12 +161,12 @@ ZX_Spectrum_ULA #(
 	.CPU_INT(		CPU_INT),
 	.CPU_WAIT(	  	CPU_WAIT),
 
-	.LED(           led),
+	.LED(			led),
 
-	.USB0_DP(       USB0_DP),					// USB Data port 0
-	.USB0_DN(       USB0_DN),
-	.USB1_DP(       USB1_DP),					// USB Data port 1
-	.USB1_DN(       USB1_DN),
+	.USB0_DP(		USB0_DP),					// USB Data port 0
+	.USB0_DN(		USB0_DN),
+	.USB1_DP(		USB1_DP),					// USB Data port 1
+	.USB1_DN(		USB1_DN),
 
 	.TMDSp(			TMDSp),						// DVI video output
 	.TMDSn(			TMDSn),
@@ -184,7 +184,7 @@ ZX_Spectrum_ULA #(
 	 ) sdcard (
 
 	.CLK_28(		SDC_CLK),
- 	.RESET(			~BTN1),
+ 	.RESET(			ULA_RESET),
 
  	.CPU_WR_DATA(	CPU_WR_DATA),				// CPU Bus
  	.CPU_RD_DATA(	CPU_RD_DATA),
