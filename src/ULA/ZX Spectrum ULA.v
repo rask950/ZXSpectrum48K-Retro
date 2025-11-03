@@ -184,21 +184,21 @@ always @(posedge CLK_28) begin
 
 	end
 
-	DVI_INT			<= (DVI_Y == 0 && DVI_X < INT_X_END);
+	DVI_INT			<=  (DVI_Y == 0 && DVI_X < INT_X_END);
 
-	DVI_ENABLE		<= (DVI_X < DISPLAY_WIDTH)	&& (DVI_Y < DISPLAY_HEIGHT);	// Set DVI_ENABLE when counters within visible region
+	DVI_ENABLE		<=  (DVI_X < DISPLAY_WIDTH)	&& (DVI_Y < DISPLAY_HEIGHT);			// Set DVI_ENABLE when counters within visible region
 
-	DVI_HSYNC		<= (DVI_X > DVI_HSYNC_START) && (DVI_X < DVI_HSYNC_END);		// Period where horizontal sync is active
+	DVI_HSYNC		<=  (DVI_X > DVI_HSYNC_START) && (DVI_X < DVI_HSYNC_END);			// Period where horizontal sync is active
 
-	DVI_VSYNC		<= (DVI_Y > DVI_VSYNC_START) && (DVI_Y < DVI_VSYNC_END);		// and vertical sync
+	DVI_VSYNC		<=  (DVI_Y > DVI_VSYNC_START) && (DVI_Y < DVI_VSYNC_END);			// and vertical sync
 
-	PIXEL_ENABLE	<= (DVI_Y >= SPEC_VSTART && DVI_Y < SPEC_VEND) &&			// Flag for output pixels / border colour
+	PIXEL_ENABLE	<=  (DVI_Y >= SPEC_VSTART && DVI_Y < SPEC_VEND) &&					// Flag for output pixels / border colour
 						(DVI_X >= SPEC_HSTART && DVI_X < SPEC_HEND);
 
-	PIXEL_READ		<= (DVI_Y >= SPEC_VSTART && DVI_Y < SPEC_VEND) &&			// Flag to begin pixel read from buffer - 1 pixel before output enable
+	PIXEL_READ		<=  (DVI_Y >= SPEC_VSTART && DVI_Y < SPEC_VEND) &&					// Flag to begin pixel read from buffer - 1 pixel before output enable
 						(DVI_X >= SPEC_HSTART - 2 && DVI_X < SPEC_HEND - 2);
 
-	DMA_RD_ENABLE	<= (DVI_Y >= SPEC_DSTART && DVI_Y < SPEC_DEND) &&				// DMA active 1 SPECTRUM pixel row before display output
+	DMA_RD_ENABLE	<=  (DVI_Y >= SPEC_DSTART && DVI_Y < SPEC_DEND) &&					// DMA active 1 SPECTRUM pixel row before display output
 						(DVI_X >= SPEC_HSTART && DVI_X < SPEC_HEND);
 
 end
@@ -206,7 +206,7 @@ end
 ////////////////////////////////////////////////////////////////////////
 // Flash delay counter, uses 50Hz interrupt signal as clock
 
-reg [4:0]FRAMES;																// Count frames for flash period. Bit 4 = flash state
+reg [4:0]FRAMES;																		// Count frames for flash period. Bit 4 = flash state
 
 initial begin
 
@@ -270,8 +270,8 @@ end
 
 reg [15:0]BYTES;																// This counts through 8K video ram + low bit state
 
-// Bits: 15:4, 2 - Byte index in memory
-// 		 3 		 - This is 1 when memory is being accessed, 0 otherwise. Used for contention compatibility
+// Bits: 15:4, 2 - 12 bit index in memory (0-8191)
+// 		 3 		 - 1 = Memory is being accessed. Used for contention compatibility
 //		 2:0	 - 0 = Set DMA address for even pixel byte
 //				 - 1 = Read pixel
 //				 - 2 = Set DMA address for even attribute byte
@@ -342,7 +342,7 @@ end
 
 assign CPU_RD_DATA = ~(CPU_IORQ | CPU_RD | CPU_ADDRESS[IO_PORT1]) ? { 1'b1, IO_IN[5], 1'b1, IO_IN[4:0] & ~USB_IO(CPU_ADDRESS[15:8]) } : 8'bz;
 
-assign CPU_RD_DATA = ~(CPU_IORQ | CPU_RD | CPU_ADDRESS[IO_PORT2]) ? IO_PORT_MEM						  	 : 8'bz;
+assign CPU_RD_DATA = ~(CPU_IORQ | CPU_RD | CPU_ADDRESS[IO_PORT2]) ? IO_PORT_MEM : 8'bz;
 
 assign IO_OUT		= IO_PORT_ULA[4:3];												// Audio output bits
 

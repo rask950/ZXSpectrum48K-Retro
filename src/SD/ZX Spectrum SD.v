@@ -29,7 +29,7 @@ parameter  IO_PORT				= 3'd1;									// IO port BIT NUMBER (0-7)
 localparam TRUE					= 1'b1;
 localparam FALSE				= 1'b0;
 
-localparam CLK_SLOW				= 3'd6;									// Bit 6 of clock counter about 2.5KHz
+localparam CLK_SLOW				= 3'd6;									// Bit 6 of clock counter about 2.18KHz
 localparam CLK_FAST				= 3'd3;									// Bit 3 of clock counter about 1.75MHz
 
 localparam STATE_IDLE			= 4'd0;									// Waiting on command
@@ -141,8 +141,8 @@ end
 wire 	  IO_SEL;
 wire [3:0]IO_REG;
 
-assign IO_SEL =  CPU_ADDRESS[IO_PORT] | CPU_IORQ | ULA_PAGING[5];		// Selected as IO device (Active low)
-assign IO_REG = ~CPU_ADDRESS[11:8];										// Internal register number 0-15
+assign IO_SEL = CPU_ADDRESS[IO_PORT] | CPU_IORQ | ULA_PAGING[5];		// Selected as IO device (Active low)
+assign IO_REG = CPU_ADDRESS[11:8];										// Internal register number 0-15
 
 assign SD_CLK = CLK_COUNT[CLK_SPEED];
 
@@ -172,23 +172,23 @@ always @(posedge CLK_28) begin
 
 		case(IO_REG)
 
-		4'b0000: begin													// FFFD - 65531
+		4'hF: begin														// FFFD - 65531
 			CMD_CODE	<= CPU_WR_DATA[5:0];							// NB Writing the command code kicks off the state machine
 		end
 
-		4'b0100: begin													// FEFD - 65277
+		4'hB: begin														// FBFD - 65277
 			CMD_ARG[0]	<= CPU_WR_DATA;									// Write to each of the 4 byte arguments
 		end
 
-		4'b0011: begin													// FDFD - 65021
+		4'hC: begin														// FCFD - 65021
 			CMD_ARG[1]	<= CPU_WR_DATA;
 		end
 
-		4'b0010: begin													// FCFD - 64765
+		4'hD: begin														// FDFD - 64765
 			CMD_ARG[2]	<= CPU_WR_DATA;
 		end
 
-		4'b0001: begin													// FBFD - 64509
+		4'hE: begin														// FEFD - 64509
 			CMD_ARG[3]	<= CPU_WR_DATA;
 		end
 
