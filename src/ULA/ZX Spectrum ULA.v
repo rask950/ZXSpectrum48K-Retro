@@ -340,9 +340,9 @@ always @ (posedge CLK_7) begin
 
 end
 
-assign CPU_RD_DATA = ~(CPU_IORQ | CPU_RD | CPU_ADDRESS[IO_PORT1]) ? { 1'b1, IO_IN[5], 1'b1, IO_IN[4:0] & ~USB_IO(CPU_ADDRESS[15:8]) } : 8'bz;
+assign CPU_RD_DATA	= ~(CPU_IORQ | CPU_RD | CPU_ADDRESS[IO_PORT1]) ? { 1'b1, IO_IN[5], 1'b1, IO_IN[4:0] & ~USB_IO(CPU_ADDRESS[15:8]) } : 8'bz;
 
-assign CPU_RD_DATA = ~(CPU_IORQ | CPU_RD | CPU_ADDRESS[IO_PORT2]) ? IO_PORT_MEM : 8'bz;
+assign CPU_RD_DATA	= ~(CPU_IORQ | CPU_RD | CPU_ADDRESS[IO_PORT2]) ? IO_PORT_MEM : 8'bz;
 
 assign IO_OUT		= IO_PORT_ULA[4:3];												// Audio output bits
 
@@ -361,7 +361,7 @@ KB_TYPE KBIT;
 
 reg KCAP;
 reg KSYM;
-reg [39: 0] KBD_DATA [ 0:255];
+reg [39: 0] KBD_DATA [ 0:45];
 
 initial begin
 
@@ -378,14 +378,14 @@ function automatic [ 4: 0] USB_IO(
 );
 	reg [4:0]v = 0;
 
-	if (!port[0]) v = v | { KBIT.BIT[0][4:1], KBIT.BIT[0][0] | (KCAP & (KBIT == 0)) };
+	if (!port[0]) v = v | { KBIT.BIT[0][4:1], KCAP };
 	if (!port[1]) v = v | 	KBIT.BIT[1];
 	if (!port[2]) v = v | 	KBIT.BIT[2];
 	if (!port[3]) v = v | 	KBIT.BIT[3];
 	if (!port[4]) v = v | 	KBIT.BIT[4];
 	if (!port[5]) v = v | 	KBIT.BIT[5];
 	if (!port[6]) v = v | 	KBIT.BIT[6];
-	if (!port[7]) v = v | { KBIT.BIT[7][4:2], KBIT.BIT[7][1] | KSYM, KBIT.BIT[7][0] };
+	if (!port[7]) v = v | { KBIT.BIT[7][4:2], KSYM, KBIT.BIT[7][0] };
 
 	return v;
 
