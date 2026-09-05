@@ -260,7 +260,7 @@ module SLA8 (
 );
 
 assign result = en ? { p1[6:0], 1'b0 } : 8'bz;
-assign cout	= en ? { p1[7],	3'b0 } : 4'bz;
+assign cout	  = en ? { p1[7],	3'b0 } : 4'bz;
 
 endmodule
 
@@ -272,7 +272,7 @@ module SRA8 (
 );
 
 assign result = en ? { p1[7], p1[7:1] } : 8'bz;
-assign cout	= en ? { p1[0],	3'b0 } : 4'bz;
+assign cout	  = en ? { p1[0],	3'b0 } : 4'bz;
 
 endmodule
 
@@ -284,7 +284,7 @@ module SRL8 (
 );
 
 assign result = en ? { 1'b0, p1[7:1] } : 8'bz;
-assign cout	= en ? { p1[0],	3'b0 } : 4'bz;
+assign cout	  = en ? { p1[0],	3'b0 } : 4'bz;
 
 endmodule
 
@@ -406,7 +406,7 @@ AND1 and6( r[6], p1[6], p2[6]);
 AND1 and7( r[7], p1[7], p2[7]);
 
 assign result = en ?	r : 8'bz;
-assign cout	= en ? 4'b0 : 4'bz;
+assign cout	  = en ? 4'b0 : 4'bz;
 
 endmodule
 
@@ -440,7 +440,7 @@ OR1 or6( r[6], p1[6], p2[6]);
 OR1 or7( r[7], p1[7], p2[7]);
 
 assign result = en ?	r : 8'bz;
-assign cout	= en ? 4'b0 : 4'bz;
+assign cout	  = en ? 4'b0 : 4'bz;
 
 endmodule
 
@@ -474,7 +474,7 @@ XOR1 xor6( r[6], p1[6], p2[6]);
 XOR1 xor7( r[7], p1[7], p2[7]);
 
 assign result = en ?	r : 8'bz;
-assign cout	= en ? 4'b0 : 4'bz;
+assign cout   = en ? 4'b0 : 4'bz;
 
 endmodule
 

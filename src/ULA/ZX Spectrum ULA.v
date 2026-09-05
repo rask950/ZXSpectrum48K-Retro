@@ -3,19 +3,18 @@
 module ZX_Spectrum_ULA(
 
 	input 				SYS_CLK,					// 28MHz (MASTER)
+
+	output				RESET,						// reset signal
+
 	output				CLK_28,						// 28MHz (SD)
 	output				CLK_14,						// 14MHz (MEM)
 	output				CLK_7,						//  7MHz (CPU)
 
-	output				RESET,						// reset signal
-
-	output		[ 7: 0] PAGING,						// Paging register
-
-	input  reg	[ 7: 0] DMA_DATA_IN,				// ULA DMA
+	output reg		 	DMA_RD_ENABLE,				// ULA DMA for video RAM
+	input  reg	[ 7: 0] DMA_DATA_IN,
 	output reg	[15: 0] DMA_ADDRESS,
-	output reg		 	DMA_RD_ENABLE,
 
-	input				CPU_IORQ,					// CPU 
+	input				CPU_IORQ,					// CPU Buses
 	input				CPU_MREQ,
 	input				CPU_RD,
 	input				CPU_WR,
@@ -27,8 +26,10 @@ module ZX_Spectrum_ULA(
 
 	// Physical connections
 
-	input  		[ 5: 0] IO_IN,						// Input port FE - AUDIO IN/KB
-	output 		[ 1: 0] IO_OUT,						// Output port FE - MIC & SPEAKER
+	input  		[ 5: 0] IO_IN,						// Input  port $FE - AUDIO IN/KB
+	output 		[ 1: 0] IO_OUT,						// Output port $FE - MIC & SPEAKER
+
+	output		[ 7: 0] PAGING,						// Paging register
 
 	output		[ 1: 0] LED,
 
@@ -52,8 +53,8 @@ localparam TRUE  = 1'b1;
 ////////////////////////////////////////////////////////////////////////
 // ULA IO port regs
 
-reg [7:0]IO_PORT_ULA;								// ULA's only IO port
-reg	[7:0]IO_PORT_MEM;								// Memory paging register
+reg	[ 7: 0]IO_PORT_ULA;								// ULA's only IO port
+reg	[ 7: 0]IO_PORT_MEM;								// Memory paging register
 
 assign PAGING = IO_PORT_MEM;
 
@@ -81,42 +82,42 @@ ZX_Spectrum_CLK zclk(
 ////////////////////////////////////////////////////////////////////////
 // DVI output processing
 
-localparam DISPLAY_WIDTH	= 768;		 		// Pixel dimensions of visible display (576p ?)
+localparam DISPLAY_WIDTH	= 768;		 			// Pixel dimensions of visible display (576p ?)
 localparam DISPLAY_HEIGHT	= 576;
 
-localparam INT_X_END		= 256;				// 256 @ 28MHz = 32 @ 3.5MHz - interrupt min duration
+localparam INT_X_END		= 256;					// 256 @ 28MHz = 32 @ 3.5MHz - interrupt min duration
 
-localparam DVI_WIDTH		= 895;				// Dimensions (-1) of DVI raster
+localparam DVI_WIDTH		= 895;					// Dimensions (-1) of DVI raster
 localparam DVI_HEIGHT		= 623;
-localparam DVI_HSYNC_START	= 781;				// Horizontal and vertical sync positions
+localparam DVI_HSYNC_START	= 781;					// Horizontal and vertical sync positions
 localparam DVI_HSYNC_END	= 857;
 localparam DVI_VSYNC_START	= 586;
 localparam DVI_VSYNC_END	= 591;
 
-localparam SPEC_HSTART		= 128;				// Spectrum pixel display horizontal boundaries
-localparam SPEC_HEND		= 640;				// within the DVI DISPLAY area
-localparam SPEC_VSTART		= 96;				// Spectrum pixel display vertical boundaries
+localparam SPEC_HSTART		= 128;					// Spectrum pixel display horizontal boundaries
+localparam SPEC_HEND		= 640;					// within the DVI DISPLAY area
+localparam SPEC_VSTART		= 96;					// Spectrum pixel display vertical boundaries
 localparam SPEC_VEND		= 480;
-localparam SPEC_DSTART		= 94;				// Spectrum DMA start and end 1 row before pixel output
+localparam SPEC_DSTART		= 94;					// Spectrum DMA start and end 1 row before pixel output
 localparam SPEC_DEND		= 478;
 
-reg [3:0]COLOUR_INDEX;							// Current pixel colour index 0-15
+reg [ 3: 0]COLOUR_INDEX;							// Current pixel colour index 0-15
 
-reg [7:0]DVI_RED;								// RGB values for current pixel
-reg [7:0]DVI_GREEN;
-reg [7:0]DVI_BLUE;
+reg [ 7: 0]DVI_RED;									// RGB values for current pixel
+reg [ 7: 0]DVI_GREEN;
+reg [ 7: 0]DVI_BLUE;
 
-reg [9:0]DVI_X;									// Horizontal and vertical counters
-reg [9:0]DVI_Y;
+reg [ 9: 0]DVI_X;									// Horizontal and vertical counters
+reg [ 9: 0]DVI_Y;
 
-reg DVI_HSYNC;									// Horizontal and vertical sync signals
+reg DVI_HSYNC;										// Horizontal and vertical sync signals
 reg DVI_VSYNC;
 
-reg DVI_ENABLE;									// Flag indicating the visible display is being output at DVI
-reg DVI_INT;
+reg DVI_ENABLE;										// Flag indicating the visible display is being output at DVI
+reg DVI_INT;										// Interrupt generation output
 
-reg PIXEL_ENABLE;								// Flags for active TV pixel output vs border output
-reg PIXEL_READ;
+reg PIXEL_ENABLE;									// Flags for active TV pixel output vs border output
+reg PIXEL_READ;										// Indicates pixel data being read from RAM
 
 initial begin
 
@@ -161,7 +162,7 @@ ZX_Spectrum_DVI dvi(
 );
 
 ////////////////////////////////////////////////////////////////////////
-// Spectrum pixel component colours
+// Spectrum pixel component colours - convert index to RGB component values
 
 ZX_Spectrum_PAL pal(
 
@@ -174,7 +175,7 @@ ZX_Spectrum_PAL pal(
 ////////////////////////////////////////////////////////////////////////
 // Generate DVI raster
 
-always @(posedge CLK_28) begin
+always @(posedge CLK_28) begin															// DVI Pixel clock
 
 	DVI_X	  <= DVI_X < DVI_WIDTH ? DVI_X + 10'd1 : 10'd0;								// Column/Row counters
 
@@ -206,7 +207,7 @@ end
 ////////////////////////////////////////////////////////////////////////
 // Flash delay counter, uses 50Hz interrupt signal as clock
 
-reg [4:0]FRAMES;																		// Count frames for flash period. Bit 4 = flash state
+reg [ 4: 0]FRAMES;																		// Count frames for flash period. Bit 4 = flash state
 
 initial begin
 
@@ -214,7 +215,7 @@ initial begin
 
 end
 
-always @ (posedge DVI_INT) begin
+always @ (posedge DVI_INT) begin														// Use interrupt signal to increment count
 
 	FRAMES <= FRAMES + 5'd1;
 
@@ -223,12 +224,13 @@ end
 ////////////////////////////////////////////////////////////////////////
 // SPECTRUM video processing
 
-reg  [7:0]PIX_BUF[0:63];														// 2 x Pixel and ATTibute buffers
-reg  [7:0]ATT_BUF[0:63];
-reg  [7:0]PIX;
-reg  [7:0]ATT;
+reg	[ 7: 0]PIX_BUF[0:63];														// Buffer 2 rows of pixel data
+reg	[ 7: 0]ATT_BUF[0:63];														// Buffer 2 rows of attribute data
 
-reg  [7:0]PIXELS;																// Count the 256 pixels in each row
+reg	[ 7: 0]PIX;
+reg	[ 7: 0]ATT;
+
+reg	[ 7: 0]PIXELS;																// Count the 256 pixels in each row
 
 initial begin
 
@@ -253,7 +255,7 @@ always @ (posedge CLK_14) begin
 		end
 		else begin
 
-			PIX <= PIX << 1;													// Again blocking to ensure PIX is correct
+			PIX <= PIX << 1;
 
 		end
 	end

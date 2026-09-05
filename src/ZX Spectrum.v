@@ -50,17 +50,17 @@ reg		  SD_WR_EN;
 ////////////////////////////////////////////////////////////////////////
 // CPU control and data buses
 
-wire [7:0]CPU_RD_DATA;
-reg  [7:0]CPU_WR_DATA;
-reg [15:0]CPU_ADDRESS;
-reg		  CPU_M1;
-reg		  CPU_MREQ;
-reg		  CPU_RD;
-reg		  CPU_WR;
-reg		  CPU_RFSH;
-reg		  CPU_INT;
-reg		  CPU_WAIT;
-reg		CPU_HALT;
+wire [ 7: 0]CPU_RD_DATA;
+reg  [ 7: 0]CPU_WR_DATA;
+reg	 [15: 0]CPU_ADDRESS;
+reg			CPU_M1;
+reg			CPU_MREQ;
+reg			CPU_RD;
+reg			CPU_WR;
+reg			CPU_RFSH;
+reg			CPU_INT;
+reg			CPU_WAIT;
+reg			CPU_HALT;
 
 ////////////////////////////////////////////////////////////////////////
 // Clocks for memory 14MHz (for ULA), CPU (7MHz) and SD Card (28MHz)
