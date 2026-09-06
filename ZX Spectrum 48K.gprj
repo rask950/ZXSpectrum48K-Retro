@@ -13,6 +13,7 @@
         <File path="src/ULA/USB/ZX Spectrum USB.v" type="file.verilog" enable="1"/>
         <File path="src/ULA/USB/usb_hid_host.v" type="file.verilog" enable="1"/>
         <File path="src/ULA/USB/usb_hid_host_rom.v" type="file.verilog" enable="1"/>
+        <File path="src/ULA/USB/usb_hid_ukp.v" type="file.verilog" enable="1"/>
         <File path="src/ULA/ZX Spectrum PAL.v" type="file.verilog" enable="1"/>
         <File path="src/ULA/ZX Spectrum ULA.v" type="file.verilog" enable="1"/>
         <File path="src/Z80/Z80.v" type="file.verilog" enable="1"/>

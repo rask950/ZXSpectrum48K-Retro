@@ -27,44 +27,44 @@ end
 
 assign USB_GAME[15:10] = 6'b0;
 
-usb_hid_host ZUSB (
+USB_HID_HOST ZUSB (
 
-	.usbclk(		USB_CLK),					// 12MHz clock
-	.usb_dm(		USB_DN),
-	.usb_dp(		USB_DP),					// USB D- and D+
-    .usbrst_n(      sys_resetn),
+	.USB_CLK(		USB_CLK),					// 12MHz clock
+	.USB_Dm(		USB_DN),
+	.USB_Dp(		USB_DP),					// USB D- and D+
+    .RESET(         sys_resetn),
 
-	.typ(			USB_TYP),					// device type. 0: no device, 1: keyboard, 2: mouse, 3: gamepad
+	.DEV_TYPE(		USB_TYP),					// device type. 0: no device, 1: keyboard, 2: mouse, 3: gamepad
 												// key_*, mouse_*, game_* valid depending on typ
-	.report(		USB_REPORT),				// pulse after report received from device. 
-	.conerr(		USB_ERR),					// connection or protocol error
+	.REP_PULSE(		USB_REPORT),				// pulse after report received from device. 
+	.CON_ERROR(		USB_ERR),					// connection or protocol error
 
 	// keyboard
-	.key_modifiers(	USB_KMOD),
-	.key1(			USB_KEY[0]),
-	.key2(			USB_KEY[1]),
-	.key3(			USB_KEY[2]),
-	.key4(			USB_KEY[3]),
+	.KEY_MOD(   	USB_KMOD),
+	.KEY_1(			USB_KEY[0]),
+	.KEY_2(			USB_KEY[1]),
+	.KEY_3(			USB_KEY[2]),
+	.KEY_4(			USB_KEY[3]),
 
 	// mouse
-	.mouse_btn(		USB_MBTN),					// {5'bx, middle, right, left}
-	.mouse_dx(		USB_MDX),					// signed 8-bit, cleared after `report` pulse
-	.mouse_dy(		USB_MDY),					// signed 8-bit, cleared after `report` pulse
+	.MOUSE_BTN(		USB_MBTN),					// {5'bx, middle, right, left}
+	.MOUSE_DX(		USB_MDX),					// signed 8-bit, cleared after `report` pulse
+	.MOUSE_DY(		USB_MDY),					// signed 8-bit, cleared after `report` pulse
 
 	// gamepad 
-	.game_l(		USB_GAME[0]), 
-	.game_r(		USB_GAME[1]),
-	.game_u(		USB_GAME[2]),
-	.game_d(		USB_GAME[3]),				// left right up down
-	.game_a(		USB_GAME[4]),
-	.game_b(		USB_GAME[5]),
-	.game_x(		USB_GAME[6]), 
-	.game_y(		USB_GAME[7]), 
-	.game_sel(		USB_GAME[8]), 
-	.game_sta(		USB_GAME[9]),			    // buttons
+	.GAME_LEFT(		USB_GAME[0]),				// Direction 
+	.GAME_RIGHT(	USB_GAME[1]),
+	.GAME_UP(		USB_GAME[2]),
+	.GAME_DOWN(		USB_GAME[3]),
+	.GAME_A(		USB_GAME[4]),				// Buttons
+	.GAME_B(		USB_GAME[5]),
+	.GAME_X(		USB_GAME[6]), 
+	.GAME_Y(		USB_GAME[7]), 
+	.GAME_SEL(		USB_GAME[8]), 
+	.GAME_START(	USB_GAME[9]),
 
 	// debug
-	.dbg_hid_report(USB_DBG)	// last HID report
+	.DBG_HID_REPORT(USB_DBG)					// last HID report
 );
 
 
