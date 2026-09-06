@@ -22,17 +22,17 @@ module ukp(
     output 				CON_ERROR
 );
 
-    parameter S_OPCODE	=  0;
-    parameter S_LDI0	=  1;
-    parameter S_LDI1	=  2;
-    parameter S_B0		=  3;
-    parameter S_B1		=  4;
-    parameter S_B2		=  5;
-    parameter S_S0 		=  6;
-    parameter S_S1 		=  7;
-    parameter S_S2 		=  8;
-    parameter S_TOGGLE0 =  9;
-    parameter S_TOGGLE1 = 10;
+    parameter			S_OPCODE	=  0;			// FSM states
+    parameter			S_LDI0		=  1;
+    parameter			S_LDI1		=  2;
+    parameter			S_B0		=  3;
+    parameter			S_B1		=  4;
+    parameter			S_B2		=  5;
+    parameter			S_S0 		=  6;
+    parameter			S_S1 		=  7;
+    parameter			S_S2 		=  8;
+    parameter			S_TOGGLE0	=  9;
+    parameter			S_TOGGLE1	= 10;
 
     wire		[ 3: 0]	INST;
     reg			[ 3: 0] INST_H;
@@ -46,9 +46,9 @@ module ukp(
     reg nak = 0;
     reg dmis = 0;
 
-    reg ug = 0;
-    reg ugw = 0;
-    reg nrzon = 0;						// ug=1: output enabled, 0: hi-Z
+    reg OE = 0;										// ug=1: output enabled, 0: hi-Z
+    reg OE_W = 0;
+    reg nrzon = 0;
 
     reg bank = 0;
     reg record1 = 0;
@@ -93,8 +93,14 @@ module ukp(
     wire dbit   = sb[7-sadr[2:0]];
 
     wire record;
+
     reg  dmid;
     reg [23:0] conct;
+
+    reg		dpi; 
+	reg		dmi; 
+    reg		DATA_READYd;
+    reg		nakd;
 
     assign CON_ERROR = conct[23] || ~RESET;
 
@@ -113,7 +119,7 @@ module ukp(
             mbit		<= 0;
 			bitadr		<= 0;
 			nak			<= 1;
-			ug			<= 0;
+			OE			<= 0;
 
         end else begin
 
@@ -136,12 +142,12 @@ module ukp(
 						 end
 
                         if (INST == 4) begin 
-							ug			<= 9;
+							OE			<= 9;
 							USB_DATA_p	<= 0;
 							USB_DATA_m	<= 0;
 						 end
 
-                        if (INST == 5) ug	<= 0;
+                        if (INST == 5) OE	<= 0;
 
                         if (INST == 6) begin									// op=outb
 							sadr	<= 7;
@@ -235,8 +241,8 @@ module ukp(
 
                         if (retpc)
 							PC <= NEXT_PC;									// ret
-						else if(branch)
-                            if(INST_H==15)									// jmp
+						else if (branch)
+                            if (INST_H == 15)								// jmp
                                 PC <= { INST, lb4, lb4w, 2'b00 };
                             else											// branch
                                 PC <= { 4'b0000, INST, lb4, 2'b00 };
@@ -256,7 +262,7 @@ module ukp(
             // bit transmission (out4/outb)
             if (mbit == 1 && timing == 0) begin
 
-                if(ug==0)
+                if(OE==0)
 					NRZI_TX_CNT <= 0;
                 else
                     if(dbit)
@@ -264,9 +270,9 @@ module ukp(
                     else
 					    NRZI_TX_CNT <= 0;
 
-				if(INST_H == 4'd6) begin
+				if (INST_H == 4'd6) begin
 
-					if(NRZI_TX_CNT!=6) begin
+					if (NRZI_TX_CNT != 6) begin
 					
 						USB_DATA_p <= dbit ?  USB_DATA_p : ~USB_DATA_p;
 						USB_DATA_m <= dbit ? ~USB_DATA_p :  USB_DATA_p;
@@ -283,7 +289,7 @@ module ukp(
 
 				end
 
-                ug <= 1'b1; 
+                OE <= 1'b1; 
 
                 if (NRZI_TX_CNT != 6) sadr <= sadr - 4'd1;
 
@@ -299,11 +305,13 @@ module ukp(
 
             if (INST_READY & state == S_OPCODE & INST == 4'b0010) begin 	// op=start 
 
-                bitadr <= 0; nak <= 1; NRZI_RX_CNT <= 0;
+                bitadr		<= 0; 
+				nak			<= 1;
+				NRZI_RX_CNT <= 0;
 
 			end else begin 
 
-                if (ug == 0 && dmi != dmid)
+                if (OE == 0 && dmi != dmid)
 					timing <= 1;
                 else
 					timing <= timing + 1;
@@ -315,7 +323,7 @@ module ukp(
 
                 if (bitadr == 8) nak <= dmi;
 
-                if(NRZI_RX_CNT!=6) begin
+                if (NRZI_RX_CNT != 6) begin
 
                     data[6:0]	<= data[7:1]; 
                     data[7]		<= dmis ~^ dmi;		    			// ~^/^~ is XNOR, testing bit equality
@@ -338,7 +346,7 @@ module ukp(
                 if (~dmi && ~dpi) DATA_READY <= 0;      			// SE0: packet is finished. Mouses send length 4 reports.
             end
 
-            if (ug == 0) begin
+            if (OE == 0) begin
                 if (bitadr == 24) DATA_READY <= 1;					// ignore first 3 bytes
                 if (bitadr == 88) DATA_READY <= 0;					// output next 8 bytes
             end
@@ -372,13 +380,14 @@ module ukp(
         end
     end
 
-    assign USB_Dp = ug ? USB_DATA_p : 1'bZ;
-    assign USB_Dm = ug ? USB_DATA_m : 1'bZ;
-    assign USB_OE = ug;
+    assign USB_Dp = OE ? USB_DATA_p : 1'bZ;
+    assign USB_Dm = OE ? USB_DATA_m : 1'bZ;
+    assign USB_OE = OE;
+
     assign SAMPLE = INST_READY & state == S_OPCODE & INST == 4'b1101 & timing == 4; // IN
+
     assign record = CONNECTED & ~nak;
+
     assign DATA_STROBE = ~nrzon & DATA_READY & (bitadr[2:0] == 3'b100) & (timing == 2);
-    reg    dpi, dmi; 
-    reg    DATA_READYd;
-    reg    nakd;
+
 endmodule
