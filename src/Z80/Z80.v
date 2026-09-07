@@ -109,7 +109,7 @@ reg [7:0]ALU_INFLAGS;											// Flags in
 reg [7:0]ALU_RESULT;											// Result out
 reg [7:0]ALU_OUTFLAGS;											// Flags out
 
-Z80_ALU YALU (
+Z80_ALU ZALU (
 	.opcode(	ALU_OPCODE),
 	.op1(		ALU_OP1),
 	.op2(		ALU_OP2),
@@ -150,30 +150,32 @@ Z80_CC ZCC (
 
 always @(posedge CLK) begin
 
-	if (RESET) begin
+	if (RESET) begin												// Resetting
 
-		`REG_PC	 <= 0;
+		`REG_PC	 <= 0;												// Start execution at address 0
 
 		INT_MODE <= 0;												// Interrupt mode 0-2
-		IFF1	 <= FALSE;											// Interrupt enabled FF 1
-		IFF2	 <= FALSE;											// and 2
+		IFF1	 <= FALSE;											// Interrupt disabled FF 1
+		IFF2	 <= FALSE;											// and FF 2
 		EXA		 <= FALSE;											// AF/AF'
 		EXX		 <= FALSE;											// BC,DE,HL/BC',DE',HL'
 
-		IX	 <= FALSE;
+		IX	 <= FALSE;												// IX/IY prefixes not active
 		IY	 <= FALSE;
-		BITS <= FALSE;
+		BITS <= FALSE;												// BITS and EXTD prefixes not active
 		EXTD <= FALSE;
 
-		FSM_NEXT_STATE	<= STATE_M1T1H;
-        FSM_STATE        = STATE_IDLE;
-		FSM_LAST_M		 = FALSE;
+		FSM_NEXT_STATE	<= STATE_M1T1H;								// Next state to start of M1
+        FSM_STATE       <= STATE_IDLE;								// Initial FSM state		
+		FSM_LAST_M		<= FALSE;									// Last M-cycle flag
 
 	end else begin
 
-        FSM_STATE = FSM_NEXT_STATE;
+        FSM_STATE <= FSM_NEXT_STATE;								// Not resetting, set next FSM state
 
     end
+
+	// FSM basic cycle handling
 
 	casez(FSM_STATE)
 
@@ -181,34 +183,34 @@ always @(posedge CLK) begin
 	// M1 Pseudo cycle for NMI/INT1/HALT that does NOT pick up a new opcode
 
 	STATE_NIT1H: begin										    // T1
-		ADDRESS_BUS 	 <=`REG_PC;								// PC -> Address bus and incrementer (not used)
-		M1			     <= ACTIVE;					    		// M1 active
-		FSM_NEXT_STATE.T <= STATE_T1L;
+		ADDRESS_BUS 		<=`REG_PC;							// PC -> Address bus (not used)
+		M1			    	<= ACTIVE;				    		// M1 active
+		FSM_NEXT_STATE.T	<= STATE_T1L;
 	end
 
 	STATE_NIT1L: begin										    // One half-cycle later ...
-		MREQ			 <= ACTIVE;
-		RD				 <= ACTIVE;								// MREQ and RD go active
-		FSM_NEXT_STATE.T <= STATE_T2H;							// PC NOT updated
+		MREQ				<= ACTIVE;
+		RD					<= ACTIVE;							// MREQ and RD go active
+		FSM_NEXT_STATE.T	<= STATE_T2H;						// PC NOT updated
 	end
 
 	STATE_NIT2H: begin										    // T2 - Process WAIT signal
-		FSM_NEXT_STATE.T <= STATE_T2L;
+		FSM_NEXT_STATE.T	<= STATE_T2L;
 	end
 
 	STATE_NIT2L: begin											// Execute T2 again if WAIT is active
-		FSM_NEXT_STATE.T <= WAIT ? STATE_T3H : STATE_T2H;
+		FSM_NEXT_STATE.T	<= WAIT ? STATE_T3H : STATE_T2H;
 	end
 
 	STATE_NIT3H: begin											// T3 - Prepare to refresh  NO INSTRUCTION READ
-		ADDRESS_BUS		 <= `REG_IR;
-		M1			 	 <= INACTIVE;
-		RD			 	 <= INACTIVE;
-		MREQ			 <= INACTIVE;
-		RFSH			 <= ACTIVE;
-		INC_DIR			 <= TRUE;								// Set incrementer to add 7 bits
-		INC_BITS		 <= FALSE;
-		FSM_NEXT_STATE	 <= STATE_M1T3L;						// Remainder follows the usual M1
+		ADDRESS_BUS		 	<= `REG_IR;
+		M1			 	 	<= INACTIVE;
+		RD			 	 	<= INACTIVE;
+		MREQ			 	<= INACTIVE;
+		RFSH			 	<= ACTIVE;
+		INC_DIR			 	<= TRUE;							// Set incrementer to add 7 bits
+		INC_BITS		 	<= FALSE;
+		FSM_NEXT_STATE	 	<= STATE_M1T3L;						// Remainder follows the usual M1
 	end
 
 	///////////////////////////////////////////////////////////////////////////
@@ -479,8 +481,6 @@ always @(posedge CLK) begin
 			FSM_NEXT_STATE	<= STATE_MR1T1H;
 		end
 
-
-
 		STATE_MR1T1H: begin											// MR(3) Prepare to read displacement
 			ADDRESS_BUS		<= `REG_PC;
 			INC_DIR			<= TRUE;								// ADD 16 bits
@@ -497,6 +497,7 @@ always @(posedge CLK) begin
 		endcase
 
 	end
+
 
 	////////////////////////////////////////////////////////////////////////////
 	// Special case HALT - MUST go BEFORE LD r,(HL)/LD (HL),r
@@ -529,7 +530,6 @@ always @(posedge CLK) begin
 		end
 
 
-
 		STATE_MR1T1H: begin											// MR(3) Read displacement
 			ADDRESS_BUS		<=`REG_PC;
 			INC_DIR			<= TRUE;								// Set incrementer to add 16 bits
@@ -541,7 +541,6 @@ always @(posedge CLK) begin
 			ALU_OP2			<= DATA_IN;								// Pick up displacement byte
 			FSM_NEXT_STATE	<= STATE_GN1T1H;						// Now start a new cycle for calculation
 		end
-
 
 
 		STATE_GN1T1H: begin											// MG(5) For displacement and timing purposes
@@ -591,6 +590,7 @@ always @(posedge CLK) begin
 
 		endcase
 	end
+
 
 	PLA_LDHXY_R: begin												// M1(4) LD (HL/IX+n/IY+n),r
 
@@ -665,6 +665,7 @@ always @(posedge CLK) begin
 		endcase
 	end
 
+
 	PLA_LDR_R: begin												// M1(4) LD r,r
 
 		case(FSM_STATE)
@@ -673,18 +674,19 @@ always @(posedge CLK) begin
 			CPU_REG_NUM		<= OPCODE_REG[2:0];
 		end
 
-		STATE_M1T4H: begin											// Read source register to data bus
+		STATE_M1T4H: begin
 		   `REG_Z			<= REG.R8[REG8_INDEX];					// Temp save source value
 			CPU_REG_NUM		<= OPCODE_REG[5:3];						// Decode destination register
 		end
 
 		STATE_M1T4L: begin
 			REG.R8[REG8_INDEX]	<=`REG_Z;							// Set value of destination register
-			FSM_LAST_M		= TRUE;									// Complete
+			FSM_LAST_M			 = TRUE;							// Complete
 		end
 
 		endcase
 	end
+
 
 	PLA_LDHXY_N: begin												// M1(4) LD (HL/IX+n/IY+n),n
 
@@ -694,7 +696,6 @@ always @(posedge CLK) begin
 		   `REG_WZ			<= `CUR_HL;								// Base address to WZ
 			FSM_NEXT_STATE	<= (IX|IY) ? STATE_MR1T1H : STATE_MR2T1H;
 		end
-
 
 
 		STATE_MR1T1H: begin											// MR(5) - Should be next M cycle but isn't
@@ -2369,7 +2370,7 @@ always @(posedge CLK) begin
 
 
 		STATE_MR1T1H: begin											// MR(4)
-			ADDRESS_BUS			<= `REG_WZ;
+			ADDRESS_BUS			<= `REG_WZ;							// Calculated address to bus
 		end
 
 		STATE_MR1T3L: begin
