@@ -2293,14 +2293,14 @@ always @(posedge CLK) begin
 
 		STATE_M1T4H: begin
 			ALU_OPCODE		<= { 2'b01, OPCODE_REG[5:3] };			// Shift/rotate opcodes 01zzz
-			ALU_OP1		<= `CUR_A;
-			ALU_INFLAGS	<= `CUR_F;
+			ALU_OP1			<= `CUR_A;
+			ALU_INFLAGS		<= `CUR_F;
 		end
 		
 		STATE_M1T4L: begin
-		   `CUR_A		<= ALU_RESULT;								// Store result and flags
-		   `CUR_F[1:0]	<= ALU_OUTFLAGS[1:0];						// Set only N and C
-			FSM_LAST_M	 <= TRUE;
+		   `CUR_A			<= ALU_RESULT;								// Store result and flags
+		   `CUR_F[1:0]		<= ALU_OUTFLAGS[1:0];						// Set only N and C
+			FSM_LAST_M		<= TRUE;
 		end
 
 		endcase		
@@ -2524,16 +2524,21 @@ always @(posedge CLK) begin
 		case(FSM_STATE)
 
 		STATE_M1T3L: begin
-			CPU_REG_NUM	<= OPCODE_REG[2:0];							// Decode reg
+			CPU_REG_NUM					<= OPCODE_REG[2:0];			// Decode reg
+			ALU_OP1						<= 0;
 		end
 
 		STATE_M1T4H: begin											// Set Z flag
-		   `CUR_F[FLAG_Z] <= ~REG.R8[REG8_INDEX][OPCODE_REG[5:3]];
+			ALU_OP2						<= REG.R8[REG8_INDEX];
+			ALU_OP1[OPCODE_REG[5:3]]	<= TRUE;
+			ALU_OPCODE					<= ALU_AND;
 		end
 
 		STATE_M1T4L: begin
-			FSM_LAST_M			 <= TRUE;
+		   `CUR_F[7:1]					<= ALU_OUTFLAGS[7:1];		// Set flags except C
+			FSM_LAST_M					<= TRUE;
 		end
+
 		endcase
 	end
 
@@ -2541,6 +2546,7 @@ always @(posedge CLK) begin
 	PLA_RES_R: begin												// RES n,r
 
 		case(FSM_STATE)
+
 		STATE_M1T3L: begin
 			CPU_REG_NUM	<= OPCODE_REG[2:0];							// Decode reg
 		end
@@ -2552,6 +2558,7 @@ always @(posedge CLK) begin
 		STATE_M1T4L: begin
 			FSM_LAST_M			 <= TRUE;
 		end
+
 		endcase
 	end
 	
