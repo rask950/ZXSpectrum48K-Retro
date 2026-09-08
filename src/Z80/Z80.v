@@ -109,7 +109,7 @@ reg [7:0]ALU_INFLAGS;											// Flags in
 reg [7:0]ALU_RESULT;											// Result out
 reg [7:0]ALU_OUTFLAGS;											// Flags out
 
-Z80_ALU ZALU (
+Z80_ALU YALU (
 	.opcode(	ALU_OPCODE),
 	.op1(		ALU_OP1),
 	.op2(		ALU_OP2),
@@ -150,32 +150,30 @@ Z80_CC ZCC (
 
 always @(posedge CLK) begin
 
-	if (RESET) begin												// Resetting
+	if (RESET) begin
 
-		`REG_PC	 <= 0;												// Start execution at address 0
+		`REG_PC	 <= 0;
 
 		INT_MODE <= 0;												// Interrupt mode 0-2
-		IFF1	 <= FALSE;											// Interrupt disabled FF 1
-		IFF2	 <= FALSE;											// and FF 2
+		IFF1	 <= FALSE;											// Interrupt enabled FF 1
+		IFF2	 <= FALSE;											// and 2
 		EXA		 <= FALSE;											// AF/AF'
 		EXX		 <= FALSE;											// BC,DE,HL/BC',DE',HL'
 
-		IX	 <= FALSE;												// IX/IY prefixes not active
+		IX	 <= FALSE;
 		IY	 <= FALSE;
-		BITS <= FALSE;												// BITS and EXTD prefixes not active
+		BITS <= FALSE;
 		EXTD <= FALSE;
 
-		FSM_NEXT_STATE	<= STATE_M1T1H;								// Next state to start of M1
-        FSM_STATE       <= STATE_IDLE;								// Initial FSM state		
-		FSM_LAST_M		<= FALSE;									// Last M-cycle flag
+		FSM_NEXT_STATE	<= STATE_M1T1H;
+        FSM_STATE        = STATE_IDLE;
+		FSM_LAST_M		 <= FALSE;
 
 	end else begin
 
-        FSM_STATE <= FSM_NEXT_STATE;								// Not resetting, set next FSM state
+        FSM_STATE = FSM_NEXT_STATE;
 
     end
-
-	// FSM basic cycle handling
 
 	casez(FSM_STATE)
 
@@ -183,34 +181,34 @@ always @(posedge CLK) begin
 	// M1 Pseudo cycle for NMI/INT1/HALT that does NOT pick up a new opcode
 
 	STATE_NIT1H: begin										    // T1
-		ADDRESS_BUS 		<=`REG_PC;							// PC -> Address bus (not used)
-		M1			    	<= ACTIVE;				    		// M1 active
-		FSM_NEXT_STATE.T	<= STATE_T1L;
+		ADDRESS_BUS 	 <=`REG_PC;								// PC -> Address bus and incrementer (not used)
+		M1			     <= ACTIVE;					    		// M1 active
+		FSM_NEXT_STATE.T <= STATE_T1L;
 	end
 
 	STATE_NIT1L: begin										    // One half-cycle later ...
-		MREQ				<= ACTIVE;
-		RD					<= ACTIVE;							// MREQ and RD go active
-		FSM_NEXT_STATE.T	<= STATE_T2H;						// PC NOT updated
+		MREQ			 <= ACTIVE;
+		RD				 <= ACTIVE;								// MREQ and RD go active
+		FSM_NEXT_STATE.T <= STATE_T2H;							// PC NOT updated
 	end
 
 	STATE_NIT2H: begin										    // T2 - Process WAIT signal
-		FSM_NEXT_STATE.T	<= STATE_T2L;
+		FSM_NEXT_STATE.T <= STATE_T2L;
 	end
 
 	STATE_NIT2L: begin											// Execute T2 again if WAIT is active
-		FSM_NEXT_STATE.T	<= WAIT ? STATE_T3H : STATE_T2H;
+		FSM_NEXT_STATE.T <= WAIT ? STATE_T3H : STATE_T2H;
 	end
 
 	STATE_NIT3H: begin											// T3 - Prepare to refresh  NO INSTRUCTION READ
-		ADDRESS_BUS		 	<= `REG_IR;
-		M1			 	 	<= INACTIVE;
-		RD			 	 	<= INACTIVE;
-		MREQ			 	<= INACTIVE;
-		RFSH			 	<= ACTIVE;
-		INC_DIR			 	<= TRUE;							// Set incrementer to add 7 bits
-		INC_BITS		 	<= FALSE;
-		FSM_NEXT_STATE	 	<= STATE_M1T3L;						// Remainder follows the usual M1
+		ADDRESS_BUS		 <= `REG_IR;
+		M1			 	 <= INACTIVE;
+		RD			 	 <= INACTIVE;
+		MREQ			 <= INACTIVE;
+		RFSH			 <= ACTIVE;
+		INC_DIR			 <= TRUE;								// Set incrementer to add 7 bits
+		INC_BITS		 <= FALSE;
+		FSM_NEXT_STATE	 <= STATE_M1T3L;						// Remainder follows the usual M1
 	end
 
 	///////////////////////////////////////////////////////////////////////////
@@ -436,13 +434,56 @@ always @(posedge CLK) begin
 	////////////////////////////////////////////////////////////////////////
 	// General Machine Cycle - misc operations
 	
-	STATE_GNT1H: FSM_NEXT_STATE.T <= STATE_T1L;					// For each general H, move on to L
-	STATE_GNT2H: FSM_NEXT_STATE.T <= STATE_T2L;
-	STATE_GNT3H: FSM_NEXT_STATE.T <= STATE_T3L;
-	STATE_GNT4H: FSM_NEXT_STATE.T <= STATE_T4L;
-	STATE_GNT5H: FSM_NEXT_STATE.T <= STATE_T5L;
+	STATE_GNT1H:												// For each general H, move on to L
+			FSM_NEXT_STATE.T <= STATE_T1L;
+
+	STATE_GNT2H:
+			FSM_NEXT_STATE.T <= STATE_T2L;
+
+	STATE_GNT3H:
+			FSM_NEXT_STATE.T <= STATE_T3L;
+
+	STATE_GNT4H:
+			FSM_NEXT_STATE.T <= STATE_T4L;
+
+	STATE_GNT5H:
+			FSM_NEXT_STATE.T <= STATE_T5L;
 
 	endcase
+
+	////////////////////////////////////////////////////////////////////////////
+	// First check for last M cycle and process NMI/INT requests
+	
+	if (FSM_LAST_M) begin
+
+		IX					<= FALSE;							// Clear prefixes
+		IY			 		<= FALSE;
+		BITS				<= FALSE;
+		FSM_LAST_M			<= FALSE;
+
+		if (~NMI) begin
+
+            EXTD            <= TRUE;                            // STATE for interrupt cycle
+			OPCODE_REG 		<= 8'hFF;
+		   `REG_WZ			<= 16'h0066;						// NMI handler address
+			FSM_NEXT_STATE	<= STATE_NIT1H;						// NMI ack cycle
+
+		end else if (~INT & IFF1) begin
+
+            IFF1            <= FALSE;
+            EXTD            <= TRUE;                            // STATE for interrupt cycle
+			OPCODE_REG		<= 8'hFE;
+		   `REG_WZ			<= 16'h0038;						// INT 1 handler address
+			FSM_NEXT_STATE	<= STATE_NIT1H;						// INT 1 ack cycle
+
+		end else begin
+
+            EXTD			<= FALSE;
+			FSM_NEXT_STATE	<= STATE_M1T1H;						// Start next M1 cycle
+
+		end
+
+	end else begin
 
 	////////////////////////////////////////////////////////////////////////////
 	// Main instruction decode and execution
@@ -481,6 +522,8 @@ always @(posedge CLK) begin
 			FSM_NEXT_STATE	<= STATE_MR1T1H;
 		end
 
+
+
 		STATE_MR1T1H: begin											// MR(3) Prepare to read displacement
 			ADDRESS_BUS		<= `REG_PC;
 			INC_DIR			<= TRUE;								// ADD 16 bits
@@ -498,7 +541,6 @@ always @(posedge CLK) begin
 
 	end
 
-
 	////////////////////////////////////////////////////////////////////////////
 	// Special case HALT - MUST go BEFORE LD r,(HL)/LD (HL),r
 
@@ -510,7 +552,7 @@ always @(posedge CLK) begin
 				FSM_NEXT_STATE	<= STATE_NIT1H;						// Now start a pseudo M1 cycle which comes back here
 			end else begin
 				HALT			<= INACTIVE;						// HALT goes inactive
-				FSM_LAST_M		 = TRUE;
+				FSM_LAST_M		 <= TRUE;
 			end
 		end
 
@@ -530,6 +572,7 @@ always @(posedge CLK) begin
 		end
 
 
+
 		STATE_MR1T1H: begin											// MR(3) Read displacement
 			ADDRESS_BUS		<=`REG_PC;
 			INC_DIR			<= TRUE;								// Set incrementer to add 16 bits
@@ -541,6 +584,7 @@ always @(posedge CLK) begin
 			ALU_OP2			<= DATA_IN;								// Pick up displacement byte
 			FSM_NEXT_STATE	<= STATE_GN1T1H;						// Now start a new cycle for calculation
 		end
+
 
 
 		STATE_GN1T1H: begin											// MG(5) For displacement and timing purposes
@@ -585,12 +629,11 @@ always @(posedge CLK) begin
 		end
 
 		STATE_MR2T3L: begin											// Instruction complete
-			FSM_LAST_M		= TRUE;
+			FSM_LAST_M		<= TRUE;
 		end
 
 		endcase
 	end
-
 
 	PLA_LDHXY_R: begin												// M1(4) LD (HL/IX+n/IY+n),r
 
@@ -659,12 +702,11 @@ always @(posedge CLK) begin
 		end
 
 		STATE_MW1T3L: begin											// Instruction complete
-			FSM_LAST_M		= TRUE;
+			FSM_LAST_M		<= TRUE;
 		end
 
 		endcase
 	end
-
 
 	PLA_LDR_R: begin												// M1(4) LD r,r
 
@@ -674,19 +716,18 @@ always @(posedge CLK) begin
 			CPU_REG_NUM		<= OPCODE_REG[2:0];
 		end
 
-		STATE_M1T4H: begin
+		STATE_M1T4H: begin											// Read source register to data bus
 		   `REG_Z			<= REG.R8[REG8_INDEX];					// Temp save source value
 			CPU_REG_NUM		<= OPCODE_REG[5:3];						// Decode destination register
 		end
 
 		STATE_M1T4L: begin
 			REG.R8[REG8_INDEX]	<=`REG_Z;							// Set value of destination register
-			FSM_LAST_M			 = TRUE;							// Complete
+			FSM_LAST_M		<= TRUE;									// Complete
 		end
 
 		endcase
 	end
-
 
 	PLA_LDHXY_N: begin												// M1(4) LD (HL/IX+n/IY+n),n
 
@@ -696,6 +737,7 @@ always @(posedge CLK) begin
 		   `REG_WZ			<= `CUR_HL;								// Base address to WZ
 			FSM_NEXT_STATE	<= (IX|IY) ? STATE_MR1T1H : STATE_MR2T1H;
 		end
+
 
 
 		STATE_MR1T1H: begin											// MR(5) - Should be next M cycle but isn't
@@ -753,7 +795,7 @@ always @(posedge CLK) begin
 		end
 
 		STATE_MW1T3L: begin											// Instruction complete
-			FSM_LAST_M		= TRUE;
+			FSM_LAST_M		<= TRUE;
 		end
 
 		endcase
@@ -779,7 +821,7 @@ always @(posedge CLK) begin
 		STATE_MR1T3L: begin
 		   `REG_PC				<= INC_OUT;							// Move past immediate byte
 			REG.R8[REG8_INDEX]	<= DATA_IN;							// Make the assignment
-			FSM_LAST_M		= TRUE;									// Instruction complete
+			FSM_LAST_M		<= TRUE;									// Instruction complete
 		end
 
 		endcase
@@ -829,7 +871,7 @@ always @(posedge CLK) begin
 		end
 
 		STATE_MR3T3L: begin											// Read byte into A
-			FSM_LAST_M		= TRUE;
+			FSM_LAST_M		<= TRUE;
 		end
 
 
@@ -839,7 +881,7 @@ always @(posedge CLK) begin
 		end
 
 		STATE_MW1T3L: begin											// Instruction complete
-			FSM_LAST_M		= TRUE;
+			FSM_LAST_M		<= TRUE;
 		end
 
 		endcase
@@ -865,7 +907,7 @@ always @(posedge CLK) begin
 		end
 
 		STATE_MR1T3L: begin											// OR
-			FSM_LAST_M		= TRUE;
+			FSM_LAST_M		<= TRUE;
 		end
 
 
@@ -875,7 +917,7 @@ always @(posedge CLK) begin
 		end
 
 		STATE_MW1T3L: begin											// Instruction complete
-			FSM_LAST_M		= TRUE;
+			FSM_LAST_M		<= TRUE;
 		end
 
 		endcase
@@ -901,7 +943,7 @@ always @(posedge CLK) begin
 
 		STATE_M1T5L: begin
 		   `CUR_F[FLAG_P]  <= IFF2;
-			FSM_LAST_M		= TRUE;									//	Complete
+			FSM_LAST_M		<= TRUE;									//	Complete
 		end
 
 		endcase
@@ -947,7 +989,7 @@ always @(posedge CLK) begin
 		end
 
 		STATE_MR2T3L: begin											// Instruction complete
-			FSM_LAST_M		= TRUE;
+			FSM_LAST_M		<= TRUE;
 		end
 
 		endcase
@@ -1013,7 +1055,7 @@ always @(posedge CLK) begin
 		end
 
 		STATE_MR4T3L: begin											// Instruction complete
-			FSM_LAST_M		= TRUE;
+			FSM_LAST_M		<= TRUE;
 		end
 
 
@@ -1038,7 +1080,7 @@ always @(posedge CLK) begin
 		end
 
 		STATE_MW2T3L: begin											// Instruction complete
-			FSM_LAST_M		= TRUE;
+			FSM_LAST_M		<= TRUE;
 		end
 
 		endcase
@@ -1054,7 +1096,7 @@ always @(posedge CLK) begin
 
 		STATE_M1T6L: begin
 		   `REG_SP		<= `CUR_HL;
-			FSM_LAST_M	 = TRUE;
+			FSM_LAST_M	 <= TRUE;
 		end
 
 		endcase
@@ -1100,7 +1142,7 @@ always @(posedge CLK) begin
 
 			STATE_MR2T3L: begin										// Set register value
 				REG.R16[REG16_INDEX] <= `REG_WZ;
-				FSM_LAST_M	= TRUE;
+				FSM_LAST_M	<= TRUE;
 			end
 
 
@@ -1130,7 +1172,7 @@ always @(posedge CLK) begin
 			end
 
 			STATE_MW2T3L: begin
-				FSM_LAST_M		= TRUE;
+				FSM_LAST_M		<= TRUE;
 			end
 
 		endcase
@@ -1142,14 +1184,14 @@ always @(posedge CLK) begin
 	PLA_EXX: begin													// M1(4) EXX
 		if (FSM_STATE == STATE_M1T4L) begin							// Invert EXX
 			EXX			<= ~EXX;
-			FSM_LAST_M	 = TRUE;
+			FSM_LAST_M	 <= TRUE;
 		end
 	end
 
 	PLA_EX_AFAF: begin												// M1(4) EX AF,AF'
 		if (FSM_STATE == STATE_M1T4L) begin							// Invert EXA
 			EXA			<= ~EXA;
-			FSM_LAST_M	 = TRUE;
+			FSM_LAST_M	 <= TRUE;
 		end
 	end
 
@@ -1157,7 +1199,7 @@ always @(posedge CLK) begin
 		if (FSM_STATE == STATE_M1T4L) begin
 		   `CUR_HL <= `CUR_DE;										// This one swaps the actual values
 		   `CUR_DE <= `CUR_HL;
-			FSM_LAST_M	= TRUE;
+			FSM_LAST_M	<= TRUE;
 		end
 	end
 
@@ -1224,7 +1266,7 @@ always @(posedge CLK) begin
 		STATE_MW2T4L: FSM_NEXT_STATE.T <= STATE_T5H;
 
 		STATE_MW2T5L: begin											// Instruction complete
-			FSM_LAST_M		= TRUE;
+			FSM_LAST_M		<= TRUE;
 		end
 
 		endcase
@@ -1276,7 +1318,7 @@ always @(posedge CLK) begin
 				if (OPCODE_REG[4] & `CUR_F[FLAG_P])					// If we are doing a REPEAT, move on to next cycle
 					FSM_NEXT_STATE	<= STATE_GN1T1H;
 				else
-					FSM_LAST_M		 = TRUE;						// Otherwise, indicate instruction complete
+					FSM_LAST_M		 <= TRUE;						// Otherwise, indicate instruction complete
 			end
 
 
@@ -1299,7 +1341,7 @@ always @(posedge CLK) begin
 			STATE_GN1T4L: FSM_NEXT_STATE.T <= STATE_T5H;
 
 			STATE_GN1T5L: begin
-				FSM_LAST_M		= TRUE;								// Instruction complete
+				FSM_LAST_M		<= TRUE;								// Instruction complete
 			end
 
 		endcase
@@ -1359,7 +1401,7 @@ always @(posedge CLK) begin
 				if (OPCODE_REG[4] & `CUR_F[FLAG_P] & ~`CUR_F[FLAG_Z]) 
 					FSM_NEXT_STATE	<= STATE_GN2T1H;
 				else
-					FSM_LAST_M		 = TRUE;						// Indicate instruction complete
+					FSM_LAST_M		 <= TRUE;						// Indicate instruction complete
 			end
 
 
@@ -1383,7 +1425,7 @@ always @(posedge CLK) begin
 			STATE_GN2T4L: FSM_NEXT_STATE.T	<= STATE_T5H;
 
 			STATE_GN2T5L: begin
-				FSM_LAST_M		= TRUE;								// Instruction complete
+				FSM_LAST_M		<= TRUE;								// Instruction complete
 			end
 
 		endcase
@@ -1461,7 +1503,7 @@ always @(posedge CLK) begin
 		STATE_MR2T3L: begin											// Instruction complete
 		   `CUR_A			<= ALU_RESULT;							// Save result and flags
 		   `CUR_F			<= ALU_OUTFLAGS;
-			FSM_LAST_M		= TRUE;
+			FSM_LAST_M		<= TRUE;
 		end
 
 		endcase
@@ -1494,7 +1536,7 @@ always @(posedge CLK) begin
 		STATE_MR1T3L: begin											// Store result and flags back in AF/AF'
 		   `CUR_A			<= ALU_RESULT;
 		   `CUR_F			<= ALU_OUTFLAGS;
-			FSM_LAST_M		= TRUE;									// Instruction complete
+			FSM_LAST_M		<= TRUE;									// Instruction complete
 		end
 
 		endcase
@@ -1518,7 +1560,7 @@ always @(posedge CLK) begin
 		STATE_M1T4L: begin											// Store result and flags back in AF
 		   `CUR_A		<= ALU_RESULT;
 		   `CUR_F		<= ALU_OUTFLAGS;
-			FSM_LAST_M	 = TRUE;									// Instruction complete
+			FSM_LAST_M	 <= TRUE;									// Instruction complete
 		end
 
 		endcase
@@ -1598,7 +1640,7 @@ always @(posedge CLK) begin
 
 
 		STATE_MW1T3L: begin											// MW(3) Write back result
-			FSM_LAST_M = TRUE;
+			FSM_LAST_M <= TRUE;
 		end
 
 		endcase
@@ -1622,7 +1664,7 @@ always @(posedge CLK) begin
 		STATE_M1T4L: begin											// Now write back the result
 			REG.R8[REG8_INDEX]	<= ALU_RESULT;
 		   `CUR_F[7:1]			<= ALU_OUTFLAGS[7:1];				// Set flags except C
-			FSM_LAST_M			 = TRUE;
+			FSM_LAST_M			 <= TRUE;
 		end
 
 		endcase
@@ -1635,7 +1677,7 @@ always @(posedge CLK) begin
 		if (FSM_STATE == STATE_M1T4L) begin
 			IFF1		<= FALSE;									// Reset interrupt enable FFs
 			IFF2		<= FALSE;
-			FSM_LAST_M	 = TRUE;
+			FSM_LAST_M	 <= TRUE;
 		end
 	end
 
@@ -1650,14 +1692,14 @@ always @(posedge CLK) begin
 	PLA_CCF: begin													// M1(4) CCF
 		if (FSM_STATE == STATE_M1T4L) begin
 		   `CUR_F[FLAG_C]	<= ~`CUR_F[FLAG_C];						// Invert the carry
-			FSM_LAST_M		 = TRUE;
+			FSM_LAST_M		 <= TRUE;
 		end
 	end
 
 	PLA_SCF: begin													// M1(4) SCF
 		if (FSM_STATE == STATE_M1T4L) begin
 		   `CUR_F[FLAG_C]	<= TRUE;								// Set the carry
-			FSM_LAST_M		 = TRUE;
+			FSM_LAST_M		 <= TRUE;
 		end
 	end
 
@@ -1666,7 +1708,7 @@ always @(posedge CLK) begin
 		   `CUR_A			<= ~`CUR_A;								// Invert A
 		   `CUR_F[FLAG_H]	<= TRUE;								// Set H and N
 		   `CUR_F[FLAG_N]	<= TRUE;
-			FSM_LAST_M		 = TRUE;
+			FSM_LAST_M		 <= TRUE;
 		end
 	end
 
@@ -1699,7 +1741,7 @@ always @(posedge CLK) begin
                `CUR_F[FLAG_C]	<= TRUE;
             end
 
- 			FSM_LAST_M		 = TRUE;
+ 			FSM_LAST_M		 <= TRUE;
 		end
 		
 		endcase
@@ -1708,7 +1750,7 @@ always @(posedge CLK) begin
 	PLA_IM: begin													// M1(4) IM n
 		if (FSM_STATE == STATE_M1T4L) begin
 			INT_MODE	<= OPCODE_REG[4:3];							// This is 00-IM 0, 10-IM1, 11-IM2
-			FSM_LAST_M	 = TRUE;
+			FSM_LAST_M	 <= TRUE;
 		end
 	end
 
@@ -1726,7 +1768,7 @@ always @(posedge CLK) begin
 		STATE_M1T4L: begin
 		   `CUR_A			<= ALU_RESULT;
 		   `CUR_F			<= ALU_OUTFLAGS | 2;					// Flags + n set
-			FSM_LAST_M		 = TRUE;
+			FSM_LAST_M		 <= TRUE;
 		end
 
 		endcase
@@ -1786,7 +1828,7 @@ always @(posedge CLK) begin
 		end
 
 		STATE_GN2T3L: begin
-			FSM_LAST_M		 = TRUE;
+			FSM_LAST_M		 <= TRUE;
 		end
 
 		endcase
@@ -1840,7 +1882,7 @@ always @(posedge CLK) begin
 		end
 
 		STATE_GN2T3L: begin
-			FSM_LAST_M	= TRUE;
+			FSM_LAST_M	<= TRUE;
 		end
 
 		endcase
@@ -1865,7 +1907,7 @@ always @(posedge CLK) begin
 
 		STATE_M1T6L: begin
 			REG.R16[REG16_INDEX] <= INC_OUT;
-			FSM_LAST_M			  = TRUE;
+			FSM_LAST_M			  <= TRUE;
 		end
 
 		endcase
@@ -1878,7 +1920,7 @@ always @(posedge CLK) begin
 
 		if (FSM_STATE == STATE_M1T4L) begin
 		   `REG_PC	   <= `CUR_HL;
-			FSM_LAST_M	= TRUE;
+			FSM_LAST_M	<= TRUE;
 		end
 	end
 
@@ -1919,7 +1961,7 @@ always @(posedge CLK) begin
 
 		STATE_MR2T3L: begin											// Take the jump : continue
 			if (OPCODE_REG[0] | CC_RESULT) `REG_PC <= `REG_WZ;
-			FSM_LAST_M		 = TRUE;
+			FSM_LAST_M		 <= TRUE;
 		end
 
 		endcase
@@ -1956,7 +1998,7 @@ always @(posedge CLK) begin
 		   `REG_PC			<= INC_OUT;								// Update PC
 		   `REG_Z			<= DATA_IN;								// And read displacement into temp reg
 			if (ALU_OUTFLAGS[FLAG_Z])
-				FSM_LAST_M		 = TRUE;							// If Z then instruction is complete
+				FSM_LAST_M		 <= TRUE;							// If Z then instruction is complete
 			else
 				FSM_NEXT_STATE	<= STATE_GN1T1H;					// Start a general cycle to do calculation
 		end
@@ -1982,16 +2024,16 @@ always @(posedge CLK) begin
 		end
 
 		STATE_GN1T2L: begin
-		   `REG_PCH			 <= ALU_RESULT;							// High byte result to W - Ignore flags
+		   `REG_PCH			 <= ALU_RESULT;							// High byte result to PC - Ignore flags
 			FSM_NEXT_STATE.T <= STATE_T3H;
 		end
 
-		STATE_GN1T3L: FSM_NEXT_STATE.T <= STATE_T4H;
+		STATE_GN1T3L: FSM_NEXT_STATE.T <= STATE_T4H;				// Timing
 
 		STATE_GN1T4L: FSM_NEXT_STATE.T <= STATE_T5H;
 
 		STATE_GN1T5L: begin
-		   FSM_LAST_M		 = TRUE;
+		   FSM_LAST_M		 <= TRUE;
 		end
 
 		endcase
@@ -2025,7 +2067,7 @@ always @(posedge CLK) begin
 			if (~OPCODE_REG[5] | CC_RESULT)							// If taking the jump
 				FSM_NEXT_STATE	<= STATE_GN1T1H;					// Start a general cycle to do calculation
 			else
-			   FSM_LAST_M		 = TRUE;							// else instruction is complete
+			   FSM_LAST_M		 <= TRUE;							// else instruction is complete
 		end
 
 
@@ -2058,7 +2100,7 @@ always @(posedge CLK) begin
 		STATE_GN1T4L: FSM_NEXT_STATE.T <= STATE_T5H;
 
 		STATE_GN1T5L: begin
-		   FSM_LAST_M		 = TRUE;
+		   FSM_LAST_M		 <= TRUE;
 		end
 
 		endcase
@@ -2109,7 +2151,7 @@ always @(posedge CLK) begin
 			if(OPCODE_REG[0] | CC_RESULT)
 				FSM_NEXT_STATE.T <= STATE_T4H;						// One more cycle if taking jump for timing
 			else
-				FSM_LAST_M		 = TRUE;							// Or mark as complete
+				FSM_LAST_M		 <= TRUE;							// Or mark as complete
 		end
 
 		STATE_MR2T4L: begin
@@ -2139,7 +2181,7 @@ always @(posedge CLK) begin
 		STATE_MW2T3L: begin											// Now write the high byte
 			`REG_SP			<= ADDRESS_BUS;
 			`REG_PC			<= `REG_WZ;								// Take the jump
-			FSM_LAST_M		 = TRUE;
+			FSM_LAST_M		 <= TRUE;
 		end		
 
 		endcase
@@ -2164,7 +2206,7 @@ always @(posedge CLK) begin
 			if (OPCODE_REG[0] | CC_RESULT)							// If taking the return
 				FSM_NEXT_STATE	<= STATE_MR1T1H;					// We need to pick up the 2 byte address
 			else
-				FSM_LAST_M		 = TRUE;							// else we're done
+				FSM_LAST_M		 <= TRUE;							// else we're done
 		end
 
 
@@ -2196,7 +2238,7 @@ always @(posedge CLK) begin
 
 		STATE_MR2T3L: begin											// Now do return jump
 			if (~OPCODE_REG[2:1] == 2'b01 ) IFF1 <= IFF2;			// Restore INT enable state for RETN		
-			FSM_LAST_M		 = TRUE;
+			FSM_LAST_M		 <= TRUE;
 		end	
 
 		endcase
@@ -2218,7 +2260,7 @@ always @(posedge CLK) begin
 
 
 		STATE_MW1T1H: begin											// MW(3)
-			ADDRESS_BUS		<= `REG_SP - 16'd1;							// Stack high byte
+			ADDRESS_BUS		<= `REG_SP - 16'd1;						// Stack high byte
 			DATA_OUT		<= `REG_PCH;
 		end
 
@@ -2229,14 +2271,14 @@ always @(posedge CLK) begin
 
 
 		STATE_MW2T1H: begin											// MW(3)
-			ADDRESS_BUS		<= ADDRESS_BUS - 16'd1;						// Stack low byte
+			ADDRESS_BUS		<= ADDRESS_BUS - 16'd1;					// Stack low byte
 			DATA_OUT		<= `REG_PCL;
 		end
 
 		STATE_MW2T3L: begin											// Now write the high byte
 		   `REG_SP			<= ADDRESS_BUS;							// Update SP
 		   `REG_PC			<=`REG_WZ;								// Take the jump
-			FSM_LAST_M		 = TRUE;
+			FSM_LAST_M		<= TRUE;
 		end		
 
 		endcase
@@ -2258,7 +2300,7 @@ always @(posedge CLK) begin
 		STATE_M1T4L: begin
 		   `CUR_A		<= ALU_RESULT;								// Store result and flags
 		   `CUR_F[1:0]	<= ALU_OUTFLAGS[1:0];						// Set only N and C
-			FSM_LAST_M	 = TRUE;
+			FSM_LAST_M	 <= TRUE;
 		end
 
 		endcase		
@@ -2325,7 +2367,7 @@ always @(posedge CLK) begin
 		end
 
 		STATE_MW1T3L: begin
-			FSM_LAST_M		 = TRUE;
+			FSM_LAST_M		 <= TRUE;
 		end
 
 		endcase
@@ -2370,20 +2412,24 @@ always @(posedge CLK) begin
 
 
 		STATE_MR1T1H: begin											// MR(4)
-			ADDRESS_BUS			<= `REG_WZ;							// Calculated address to bus
+			ADDRESS_BUS			<= `REG_WZ;
 		end
 
 		STATE_MR1T3L: begin
-			`REG_Z			 <= DATA_IN;
-			FSM_NEXT_STATE.T <= STATE_T4H;							// Extra cycle to set flag
+			ALU_OP1				<= DATA_IN;
+			ALU_OP2				<= 0;
+			ALU_OPCODE			<= ALU_AND;
+			ALU_INFLAGS			<= `CUR_F;
+			FSM_NEXT_STATE.T 	<= STATE_T4H;						// Extra cycle to set flag
 		end
 		
 		STATE_MR1T4H: begin
-			`CUR_F[FLAG_Z]	<= ~`REG_Z[OPCODE_REG[5:3]];			// Set Z flag
+			ALU_OP2[OPCODE_REG[5:3]]	<= TRUE;					// Set/Clear the bit
 		end
 
 		STATE_MR1T4L: begin
-			FSM_LAST_M		 = TRUE;								// All done
+		   `CUR_F[7:1]		<= ALU_OUTFLAGS[7:1];					// Set flags except C
+			FSM_LAST_M		 <= TRUE;								// All done
 		end
 
 		endcase
@@ -2445,7 +2491,7 @@ always @(posedge CLK) begin
 
 
 		STATE_MW1T3L: begin											// MW(3)
-			FSM_LAST_M		 = TRUE;
+			FSM_LAST_M		 <= TRUE;
 		end
 		
 		endcase
@@ -2468,7 +2514,7 @@ always @(posedge CLK) begin
 		STATE_M1T4L: begin
 			REG.R8[REG8_INDEX]	<= ALU_RESULT;						// Store result and flags
 		   `CUR_F				<= ALU_OUTFLAGS;
-			FSM_LAST_M			 = TRUE;
+			FSM_LAST_M			 <= TRUE;
 		end
 		endcase
 	end
@@ -2486,7 +2532,7 @@ always @(posedge CLK) begin
 		end
 
 		STATE_M1T4L: begin
-			FSM_LAST_M			 = TRUE;
+			FSM_LAST_M			 <= TRUE;
 		end
 		endcase
 	end
@@ -2504,7 +2550,7 @@ always @(posedge CLK) begin
 		end
 
 		STATE_M1T4L: begin
-			FSM_LAST_M			 = TRUE;
+			FSM_LAST_M			 <= TRUE;
 		end
 		endcase
 	end
@@ -2561,7 +2607,7 @@ always @(posedge CLK) begin
 
 
 		STATE_MW1T3L: begin											// ME(3) write complete
-			FSM_LAST_M		 = TRUE;
+			FSM_LAST_M		 <= TRUE;
 		end
 
 		endcase
@@ -2602,7 +2648,7 @@ always @(posedge CLK) begin
 			end
 
 			STATE_IRT4L: begin										// OR ...
-			   FSM_LAST_M		 = TRUE;
+			   FSM_LAST_M		 <= TRUE;
 			end
 
 
@@ -2612,7 +2658,7 @@ always @(posedge CLK) begin
 			end
 
 			STATE_IWT4L: begin
-			   FSM_LAST_M		 = TRUE;
+			   FSM_LAST_M		 <= TRUE;
 			end
 
 		endcase
@@ -2639,7 +2685,7 @@ always @(posedge CLK) begin
 			STATE_IRT4L: begin
 				REG.R8[REG8_INDEX]	<= ALU_OP1;
 			   `CUR_F				<= ALU_OUTFLAGS;				// Set flags except C (passed thru from inflags)
-			   FSM_LAST_M			 = TRUE;
+			   FSM_LAST_M			 <= TRUE;
 			end
 
 
@@ -2649,7 +2695,7 @@ always @(posedge CLK) begin
 			end
 
 			STATE_IWT4L: begin
-			   FSM_LAST_M		 = TRUE;
+			   FSM_LAST_M		 <= TRUE;
 			end
 
 		endcase
@@ -2701,7 +2747,7 @@ always @(posedge CLK) begin
 			if (OPCODE_REG[4] & ~`CUR_F[FLAG_Z])					// If repeat ...
 				FSM_NEXT_STATE	<= STATE_GN1T1H;
 			else
-				FSM_LAST_M		 = TRUE;
+				FSM_LAST_M		 <= TRUE;
 		end
 
 
@@ -2723,7 +2769,7 @@ always @(posedge CLK) begin
 		STATE_GN1T4L: FSM_NEXT_STATE.T <= STATE_T5H;
 
 		STATE_GN1T5L: begin
-			FSM_LAST_M		= TRUE;									// Instruction complete
+			FSM_LAST_M		<= TRUE;									// Instruction complete
 		end
 
 		endcase
@@ -2771,7 +2817,7 @@ always @(posedge CLK) begin
 			if (OPCODE_REG[4] & ~`CUR_F[FLAG_Z])					// If repeat ...
 				FSM_NEXT_STATE	<= STATE_GN1T1H;
 			else
-				FSM_LAST_M		 = TRUE;
+				FSM_LAST_M		 <= TRUE;
 		end
 
 		
@@ -2794,7 +2840,7 @@ always @(posedge CLK) begin
 		STATE_GN1T4L: FSM_NEXT_STATE.T	<= STATE_T5H;
 
 		STATE_GN1T5L: begin
-			FSM_LAST_M		= TRUE;								// Instruction complete
+			FSM_LAST_M		<= TRUE;								// Instruction complete
 		end
 		endcase
 	end
@@ -2834,7 +2880,7 @@ always @(posedge CLK) begin
 		STATE_MW2T3L: begin
 		   `REG_SP			<= ADDRESS_BUS;							// Update SP
 		   `REG_PC			<=`REG_WZ;								// Take the jump
-			FSM_LAST_M		 = TRUE;
+			FSM_LAST_M		 <= TRUE;
 		end	
 
 		endcase
@@ -2842,50 +2888,14 @@ always @(posedge CLK) begin
 
 	default: begin													// NOP etc - start a new instruction
 		if ( FSM_STATE == STATE_M1T4L) begin
-			FSM_LAST_M		 = TRUE;
+			FSM_LAST_M		 <= TRUE;
 		end
 	end
 
 	endcase
 
-	///////////////////////////////////////////////////////////////////////////
-	// Instruction execution complete, check for NMI/INT and prepare next instruction
-
-	if (FSM_LAST_M) begin
-
-		IX				<= FALSE;								// Clear prefixes
-		IY			 	<= FALSE;
-		BITS			<= FALSE;
-		FSM_LAST_M		 = FALSE;
-
-		if (~NMI) begin
-
-            EXTD            <= TRUE;                            // STATE for interrupt cycle
-			OPCODE_REG 		<= 8'hFF;
-		   `REG_WZ			<= 16'h0066;						// NMI handler address
-			FSM_NEXT_STATE	<= STATE_NIT1H;						// NMI ack cycle
-
-		end else if (~INT & IFF1) begin
-
-            IFF1            <= FALSE;
-            EXTD            <= TRUE;                            // STATE for interrupt cycle
-			OPCODE_REG		<= 8'hFE;
-		   `REG_WZ			<= 16'h0038;						// INT 1 handler address
-			FSM_NEXT_STATE	<= STATE_NIT1H;						// INT 1 ack cycle
-
-		end else begin
-
-            EXTD			<= FALSE;
-			FSM_NEXT_STATE	<= STATE_M1T1H;						// Start next M1 cycle
-
-		end
 	end
 
 end
 
 endmodule
-
-
-
-
-
