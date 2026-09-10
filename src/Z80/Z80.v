@@ -27,22 +27,22 @@ module ZX_Spectrum_Z80 (
 
 `include "Z80_Registers.vh"
 
-FSM_REG FSM_STATE;												// CPU state
-FSM_REG FSM_NEXT_STATE;											// CPU state next clock
-reg	    FSM_LAST_M;												// Indicates last M cycle of instruction
+	FSM_REG FSM_STATE;												// CPU state
+	FSM_REG FSM_NEXT_STATE;											// CPU state next clock
+	reg	    FSM_LAST_M;												// Indicates last M cycle of instruction
 
-reg [7:0]OPCODE_REG;											// Opcode
+	reg [7:0]OPCODE_REG;											// Opcode
 
-reg IX;									 						// Instruction prefixes
-reg IY;
-reg BITS;
-reg EXTD;
+	reg IX;									 						// Instruction prefixes
+	reg IY;
+	reg BITS;
+	reg EXTD;
 
-reg [1:0]INT_MODE;												// Interrupt mode 0-2
-reg IFF1;														// Interrupt enabled FF 1
-reg IFF2;														// and 2
-reg EXA;														// Selects AF or AF'
-reg EXX;														// Selects ALT registers
+	reg [1:0]INT_MODE;												// Interrupt mode 0-2
+	reg IFF1;														// Interrupt enabled FF 1
+	reg IFF2;														// and 2
+	reg EXA;														// Selects AF or AF'
+	reg EXX;														// Selects ALT registers
 
 initial begin
 
@@ -109,7 +109,7 @@ reg [7:0]ALU_INFLAGS;											// Flags in
 reg [7:0]ALU_RESULT;											// Result out
 reg [7:0]ALU_OUTFLAGS;											// Flags out
 
-Z80_ALU YALU (
+Z80_ALU ZALU (
 	.opcode(	ALU_OPCODE),
 	.op1(		ALU_OP1),
 	.op2(		ALU_OP2),
@@ -234,22 +234,19 @@ always @(posedge CLK) begin
 	end
 
 	STATE_M1T2L: begin											// Execute T2 again if WAIT is active
-		if (WAIT) begin											// Wait is INACTIVE
-	        OPCODE_REG 		 <= DATA_IN;
-			FSM_NEXT_STATE.T <= STATE_T3H;
-		end else begin
-			FSM_NEXT_STATE.T <= STATE_T2H;
-		end
+		FSM_NEXT_STATE.T 	<= WAIT ? STATE_T3H					// If wait is active, redo T2H else continue to T3H
+									: STATE_T2H;
 	end
 
 	STATE_M1T3H: begin											// T3 - Prepare to refresh & Instruction decode
- 		ADDRESS_BUS		 <=`REG_IR;								// The OPCODE can be used from here onwards
-		M1			 	 <= INACTIVE;
-		RD			 	 <= INACTIVE;
-		MREQ			 <= INACTIVE;
-		RFSH			 <= ACTIVE;
-		INC_BITS		 <= FALSE;								// Set incrementer to add 7 bits
-		FSM_NEXT_STATE.T <= STATE_T3L;
+        OPCODE_REG			<= DATA_IN;							// This is here for instructions that neet to start at T3H
+ 		ADDRESS_BUS			<=`REG_IR;							// The OPCODE can be used from here onwards
+		M1			 		<= INACTIVE;
+		RD			 		<= INACTIVE;
+		MREQ				<= INACTIVE;
+		RFSH				<= ACTIVE;
+		INC_BITS			<= FALSE;							// Set incrementer to add 7 bits
+		FSM_NEXT_STATE.T	<= STATE_T3L;
 	end
 
 	STATE_M1T3L: begin
@@ -1715,33 +1712,35 @@ always @(posedge CLK) begin
 	PLA_DAA: begin													// M1(4) DAA
 
         case(FSM_STATE)
-		
-		STATE_M1T3H: begin
-			ALU_OPCODE	<= ALU_ADD;									// Prepare to add $06 to A
-			ALU_OP1		<= `CUR_A;
-			ALU_OP2		<= 8'h06;
-		end
 
 		STATE_M1T3L: begin
-            if (`CUR_F[FLAG_H] || `CUR_A[3:0] > 4'd9) begin
-               `CUR_A			<= ALU_RESULT;						// Save result if required
-               `CUR_F[FLAG_H]	<= TRUE;
-            end
+
+			ALU_OPCODE	<= ALU_ADD;									// Prepare to add to A
+			ALU_OP1		<= `CUR_A;
+			ALU_OP2		<= 8'h00;
+
 		end
 
 		STATE_M1T4H: begin
- 		   	ALU_OP1		<= `CUR_A;
-			ALU_OP2		<= 8'h60;									// Prepare to add $60
+			if (`CUR_F[FLAG_N]) begin								// If the previous operation was a subtraction
+				if (`CUR_F[FLAG_H] || `CUR_A[3:0] > 4'd5) begin
+					ALU_OP2[3:0]	<= 8'hA;
+				end				
+			end else begin
+				if (`CUR_F[FLAG_H] || `CUR_A[3:0] > 4'd9) begin
+					ALU_OP2[3:0]	<= 8'h6;
+//				`CUR_F[FLAG_H]	<= TRUE;
+				end
+				if (`CUR_F[FLAG_C] || `CUR_A[7:4] > 4'd9) begin			// Test upper nibble of A
+				ALU_OP2[7:4]		<= 8'h6;
+//				`CUR_F[FLAG_C]	<= TRUE;
+				end
+			end	
 		end
 
 		STATE_M1T4L: begin
-
-           	if (`CUR_F[FLAG_C] || `CUR_A[7:4] > 4'd9) begin			// Test upper nibble of A
-               `CUR_A			<= ALU_RESULT;
-               `CUR_F[FLAG_C]	<= TRUE;
-            end
-
- 			FSM_LAST_M		 <= TRUE;
+           `CUR_A			<= ALU_RESULT;
+ 			FSM_LAST_M		<= TRUE;
 		end
 		
 		endcase
@@ -2519,19 +2518,21 @@ always @(posedge CLK) begin
 		endcase
 	end
 
-	PLA_BIT_R: begin												// BIT n,r
+	// BIT n, r - (4, 4) (BITS, OP) - Use AND for compatibility with undocumented behavior
 
-		case(FSM_STATE)
+	PLA_BIT_R: begin
+
+		case(FSM_STATE)												// M1 (4) - Opcode
 
 		STATE_M1T3L: begin
 			CPU_REG_NUM					<= OPCODE_REG[2:0];			// Decode reg
-			ALU_OP1						<= 0;
+			ALU_OP1						<= 0;						// This will hold the one bit mask
 		end
 
 		STATE_M1T4H: begin											// Set Z flag
 			ALU_OP2						<= REG.R8[REG8_INDEX];
-			ALU_OP1[OPCODE_REG[5:3]]	<= TRUE;
-			ALU_OPCODE					<= ALU_AND;
+			ALU_OP1[OPCODE_REG[5:3]]	<= TRUE;					// Set the mask bit
+			ALU_OPCODE					<= ALU_AND;					// Do an AND to test the bit
 		end
 
 		STATE_M1T4L: begin
@@ -2542,10 +2543,12 @@ always @(posedge CLK) begin
 		endcase
 	end
 
-	PLA_SET_R,														// SET n,r
-	PLA_RES_R: begin												// RES n,r
+	// SET/RES n, r - (4, 4) (BITS, OP)
 
-		case(FSM_STATE)
+	PLA_SET_R,
+	PLA_RES_R: begin
+
+		case(FSM_STATE)												// M1 (4) - Opcode
 
 		STATE_M1T3L: begin
 			CPU_REG_NUM	<= OPCODE_REG[2:0];							// Decode reg
@@ -2562,14 +2565,15 @@ always @(posedge CLK) begin
 		endcase
 	end
 	
-	PLA_RLRD: begin													// M1(4) RLD/RRD
+	// RLD/RRD - (4, 4, 3, 4, 3) (EXTD, OP, RD, GEN, WR)
 
-		case(FSM_STATE)
+	PLA_RLRD: begin
+
+		case(FSM_STATE)												// M1 (4) - Opcode
 		
 		STATE_M1T4L: begin
-			FSM_NEXT_STATE	<= STATE_MR1T1H;						// Begin read cycle
+			FSM_NEXT_STATE		<= STATE_MR1T1H;					// Begin memory read cycle
 		end
-
 
 
 		STATE_MR1T1H: begin											// MR(3)
@@ -2612,8 +2616,7 @@ always @(posedge CLK) begin
 		STATE_GN1T4L: FSM_NEXT_STATE	<= STATE_MW1T1H;
 
 
-
-		STATE_MW1T3L: begin											// ME(3) write complete
+		STATE_MW1T3L: begin											// MW (3) Write DATA_OUT to memory
 			FSM_LAST_M		 <= TRUE;
 		end
 
