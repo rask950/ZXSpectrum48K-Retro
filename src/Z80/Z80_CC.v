@@ -10,9 +10,9 @@
 // 7 = M  (S)
 
 module Z80_CC (
-	input  [2:0]index,
-	input  [7:0]inflags,
-	output result
+	input	[ 2: 0]	INDEX,
+	input 	[ 7: 0]	INFLAGS,
+	output			RESULT
 );
 
 `include "..\\Global.vh"
