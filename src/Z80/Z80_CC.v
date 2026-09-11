@@ -10,22 +10,22 @@
 // 7 = M  (S)
 
 module Z80_CC (
-	input	[ 2: 0]	INDEX,
-	input 	[ 7: 0]	INFLAGS,
-	output			RESULT
+	input			[ 2: 0]	INDEX,
+	input			[ 7: 0]	INFLAGS,
+	output 					RESULT
 );
 
 `include "..\\Global.vh"
 
-assign result = GetFlag() ^ ~index[0];
+assign RESULT = GetFlag() ^ ~INDEX[0];
 
 function automatic GetFlag;
 
-    case(index[2:1])
-        2'b00:   GetFlag = inflags[FLAG_Z];
-        2'b01:   GetFlag = inflags[FLAG_C];
-        2'b10:   GetFlag = inflags[FLAG_P];
-        default: GetFlag = inflags[FLAG_S];
+    case(INDEX[2:1])
+        2'b00:   GetFlag = INFLAGS[FLAG_Z];
+        2'b01:   GetFlag = INFLAGS[FLAG_C];
+        2'b10:   GetFlag = INFLAGS[FLAG_P];
+        default: GetFlag = INFLAGS[FLAG_S];
     endcase
 
 endfunction
