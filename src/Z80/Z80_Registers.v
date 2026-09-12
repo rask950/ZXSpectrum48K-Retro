@@ -9,14 +9,14 @@
 // 6   = IY Prefix
 
 module REG_DECODE ( 
-    input  reg IY,
-    input  reg IX,
-    input  reg EXX,
-    input  reg EXA,
-    input  reg [2:0]REG_NUM,
+    input  reg				IY,
+    input  reg				IX,
+    input  reg				EXX,
+    input  reg				EXA,
+    input  reg		[ 2: 0]	REG_NUM,
 
-    output reg [4:0]REG8_INDEX,                  // Output index for 8 bit reg
-    output reg [3:0]REG16_INDEX                  // Output index for 16 bit reg
+    output reg		[ 4: 0]	REG8_INDEX,                  // Output index for 8 bit reg
+    output reg		[ 3: 0]	REG16_INDEX                  // Output index for 16 bit reg
 );
 
 `include "..\\Global.vh"

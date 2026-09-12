@@ -1,30 +1,15 @@
 module Z80_INCREMENTER(
 
-    input  INC_DIR,
-    input  INC_BITS,
-    input  [15:0]INC_IN,
-    output [15:0]INC_OUT
+    input				INC_DIR,
+    input				INC_BITS,
+    input		[15: 0]	INC_IN,
+    output		[15: 0]	INC_OUT
 );
 
-localparam FALSE = 1'b0;
-localparam  TRUE = 1'b1;
+	localparam FALSE = 1'b0;
+	localparam  TRUE = 1'b1;
 
-wire c0;												// Carry out from one stage to next
-wire c1;
-wire c2;
-wire c3;
-wire c4;
-wire c5;
-wire c6;
-wire c7;
-wire c8;
-wire c9;
-wire cA;
-wire cB;
-wire cC;
-wire cD;
-wire cE;
-wire cF;
+	wire		[15: 0]	c;											// Carry out from one stage to next
 
 ALU #(.ALU_MODE(2)) a0(
     .I0(INC_IN[0]),
@@ -32,7 +17,7 @@ ALU #(.ALU_MODE(2)) a0(
     .I3(INC_DIR),
     .SUM(INC_OUT[0]),
     .CIN(~INC_DIR),
-    .COUT(c0)
+    .COUT(c[0])
 );
 
 ALU #(.ALU_MODE(2)) a1(
@@ -40,8 +25,8 @@ ALU #(.ALU_MODE(2)) a1(
     .I1(FALSE),
     .I3(INC_DIR),
     .SUM(INC_OUT[1]),
-    .CIN(c0),
-    .COUT(c1)
+    .CIN(c[0]),
+    .COUT(c[1])
 );
 
 ALU #(.ALU_MODE(2)) a2(
@@ -49,8 +34,8 @@ ALU #(.ALU_MODE(2)) a2(
     .I1(FALSE),
     .I3(INC_DIR),
     .SUM(INC_OUT[2]),
-    .CIN(c1),
-    .COUT(c2)
+    .CIN(c[1]),
+    .COUT(c[2])
 );
 
 ALU #(.ALU_MODE(2)) a3(
@@ -58,8 +43,8 @@ ALU #(.ALU_MODE(2)) a3(
     .I1(FALSE),
     .I3(INC_DIR),
     .SUM(INC_OUT[3]),
-    .CIN(c2),
-    .COUT(c3)
+    .CIN(c[2]),
+    .COUT(c[3])
 );
 
 ALU #(.ALU_MODE(2)) a4(
@@ -67,8 +52,8 @@ ALU #(.ALU_MODE(2)) a4(
     .I1(FALSE),
     .I3(INC_DIR),
     .SUM(INC_OUT[4]),
-    .CIN(c3),
-    .COUT(c4)
+    .CIN(c[3]),
+    .COUT(c[4])
 );
 
 ALU #(.ALU_MODE(2)) a5(
@@ -76,8 +61,8 @@ ALU #(.ALU_MODE(2)) a5(
     .I1(FALSE),
     .I3(INC_DIR),
     .SUM(INC_OUT[5]),
-    .CIN(c4),
-    .COUT(c5)
+    .CIN(c[4]),
+    .COUT(c[5])
 );
 
 ALU #(.ALU_MODE(2)) a6(
@@ -85,8 +70,8 @@ ALU #(.ALU_MODE(2)) a6(
     .I1(FALSE),
     .I3(INC_DIR),
     .SUM(INC_OUT[6]),
-    .CIN(c5),
-    .COUT(c6)
+    .CIN(c[5]),
+    .COUT(c[6])
 );
 
 ALU #(.ALU_MODE(2)) a7(
@@ -94,8 +79,8 @@ ALU #(.ALU_MODE(2)) a7(
     .I1(FALSE),
     .I3(INC_DIR),
     .SUM(INC_OUT[7]),
-    .CIN(INC_BITS & c6),								// Stop carry out here if BITS=0 (7 bit)
-    .COUT(c7)
+    .CIN(INC_BITS & c[6]),								// Stop carry out here if BITS=0 (7 bit)
+    .COUT(c[7])
 );
 
 ALU #(.ALU_MODE(2)) a8(
@@ -103,8 +88,8 @@ ALU #(.ALU_MODE(2)) a8(
     .I1(FALSE),
     .I3(INC_DIR),
     .SUM(INC_OUT[8]),
-    .CIN(c7),
-    .COUT(c8)
+    .CIN(c[7]),
+    .COUT(c[8])
 );
 
 ALU #(.ALU_MODE(2)) a9(
@@ -112,8 +97,8 @@ ALU #(.ALU_MODE(2)) a9(
     .I1(FALSE),
     .I3(INC_DIR),
     .SUM(INC_OUT[9]),
-    .CIN(c8),
-    .COUT(c9)
+    .CIN(c[8]),
+    .COUT(c[9])
 );
 
 ALU #(.ALU_MODE(2)) aA(
@@ -121,8 +106,8 @@ ALU #(.ALU_MODE(2)) aA(
     .I1(FALSE),
     .I3(INC_DIR),
     .SUM(INC_OUT[10]),
-    .CIN(c9),
-    .COUT(cA)
+    .CIN(c[9]),
+    .COUT(c[10])
 );
 
 ALU #(.ALU_MODE(2)) aB(
@@ -130,8 +115,8 @@ ALU #(.ALU_MODE(2)) aB(
     .I1(FALSE),
     .I3(INC_DIR),
     .SUM(INC_OUT[11]),
-    .CIN(cA),
-    .COUT(cB)
+    .CIN(c[10]),
+    .COUT(c[11])
 );
 
 ALU #(.ALU_MODE(2)) aC(
@@ -139,8 +124,8 @@ ALU #(.ALU_MODE(2)) aC(
     .I1(FALSE),
     .I3(INC_DIR),
     .SUM(INC_OUT[12]),
-    .CIN(cB),
-    .COUT(cC)
+    .CIN(c[11]),
+    .COUT(c[12])
 );
 
 ALU #(.ALU_MODE(2)) aD(
@@ -148,8 +133,8 @@ ALU #(.ALU_MODE(2)) aD(
     .I1(FALSE),
     .I3(INC_DIR),
     .SUM(INC_OUT[13]),
-    .CIN(cC),
-    .COUT(cD)
+    .CIN(c[12]),
+    .COUT(c[13])
 );
 
 ALU #(.ALU_MODE(2)) aE(
@@ -157,8 +142,8 @@ ALU #(.ALU_MODE(2)) aE(
     .I1(FALSE),
     .I3(INC_DIR),
     .SUM(INC_OUT[14]),
-    .CIN(cD),
-    .COUT(cE)
+    .CIN(c[13]),
+    .COUT(c[14])
 );
 
 ALU #(.ALU_MODE(2)) aF(
@@ -166,8 +151,8 @@ ALU #(.ALU_MODE(2)) aF(
     .I1(FALSE),
     .I3(INC_DIR),
     .SUM(INC_OUT[15]),
-    .CIN(cE),
-    .COUT(cF)
+    .CIN(c[14]),
+    .COUT(c[15])
 );
 
 endmodule

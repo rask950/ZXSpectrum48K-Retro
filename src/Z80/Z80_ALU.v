@@ -23,7 +23,7 @@ FLAGSETTER flags0(													// This takes the partial results and sets the fi
 	.OUTFLAGS(		OUTFLAGS)
 );
 
-FLG8 flg0(									// Set flags ONLY 
+FLG8 flg0(
 	.OP1(			OP1),
 	.CARRY(			INFLAGS[FLAG_C]),
 	.ENABLE(		OPCODE == ALU_FLG),
@@ -158,6 +158,7 @@ SRL8 srl0 (
 	.PART_FLAGS(	PART_FLAGS)
 );
 
+endmodule
 
 ////////////////////////////////////////////////////////////////
 // FLAG SETTER
@@ -187,7 +188,6 @@ module FLAGSETTER (										 			// Set flags according to partial result and fl
 						PART_FLAGS[PFLAG_N],						// Subtract flag
 						PART_FLAGS[PFLAG_C] };						// Carry out
 
-endmodule
 endmodule
 
 ////////////////////////////////////////////////////////////////
