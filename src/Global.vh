@@ -3,7 +3,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Generic values
 
-localparam ACTIVE	= 1'b0;				  // Active low inputs
+localparam ACTIVE	= 1'b0;					// Active low inputs
 localparam INACTIVE	= 1'b1;
 
 localparam FALSE = 1'b0;
@@ -18,6 +18,11 @@ localparam FLAG_P = 2;						// Parity/Overflow
 localparam FLAG_H = 4;						// Half carry
 localparam FLAG_Z = 6;						// Zero
 localparam FLAG_S = 7;						// Sign (-ve)
+
+localparam PFLAG_C	= 3;					// Partial flag bit use
+localparam PFLAG_V	= 2;					// For calculating overflow
+localparam PFLAG_N	= 1;
+localparam PFLAG_H	= 0;
 
 localparam ALU_ADD = 5'b00000;
 localparam ALU_ADC = 5'b00001;
@@ -41,9 +46,7 @@ localparam ALU_SLL = 5'b01110;
 localparam ALU_SRL = 5'b01111;
 localparam ALU_SHR = 5'b01zzz;              // Match shift/rotate opcodes
 
-localparam ALU_FLG = 5'b11111;
-localparam ALU_NEG = 5'b11110;
-localparam ALU_DAA = 5'b11101;
+localparam ALU_FLG = 5'b11111;				// Pseudo-operation for setting flags only
 
 //`define _GLOBAL 1
 //`endif
