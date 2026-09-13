@@ -9,6 +9,7 @@
 // 6   = IY Prefix
 
 module REG_DECODE ( 
+
     input  reg				IY,
     input  reg				IX,
     input  reg				EXX,
@@ -29,6 +30,7 @@ localparam REG_H   = 4;
 localparam REG_L   = 5;
 localparam REG_A   = 6;
 localparam REG_F   = 7;
+
 localparam REG_B_  = 8;
 localparam REG_C_  = 9;
 localparam REG_D_  = 10;
@@ -37,16 +39,20 @@ localparam REG_H_  = 12;
 localparam REG_L_  = 13;
 localparam REG_A_  = 14;
 localparam REG_F_  = 15;
+
 localparam REG_IXH = 16;
 localparam REG_IXL = 17;
 localparam REG_IYH = 18;
 localparam REG_IYL = 19;
+
 localparam REG_I   = 20;
 localparam REG_R   = 21;
+
 localparam REG_SPH = 22;
 localparam REG_SPL = 23;
 localparam REG_PCH = 24;
 localparam REG_PCL = 25;
+
 localparam REG_W   = 26;
 localparam REG_Z   = 27;
 
@@ -54,12 +60,15 @@ localparam REG_BC  = 0;
 localparam REG_DE  = 1;
 localparam REG_HL  = 2;
 localparam REG_AF  = 3;
+
 localparam REG_BC_ = 4;
 localparam REG_DE_ = 5;
 localparam REG_HL_ = 6;
 localparam REG_AF_ = 7;
+
 localparam REG_IX  = 8;
 localparam REG_IY  = 9;
+
 localparam REG_IR  = 10;
 localparam REG_SP  = 11;
 localparam REG_PC  = 12;

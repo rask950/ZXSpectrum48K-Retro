@@ -17,18 +17,10 @@ module Z80_CC (
 
 `include "..\\Global.vh"
 
-assign RESULT = GetFlag() ^ ~INDEX[0];
-
-function automatic GetFlag;
-
-    case(INDEX[2:1])
-        2'b00:   GetFlag = INFLAGS[FLAG_Z];
-        2'b01:   GetFlag = INFLAGS[FLAG_C];
-        2'b10:   GetFlag = INFLAGS[FLAG_P];
-        default: GetFlag = INFLAGS[FLAG_S];
-    endcase
-
-endfunction
+assign RESULT = INDEX[2:1] == 2'b00 ? INFLAGS[FLAG_Z] ^ ~INDEX[0] :
+                INDEX[2:1] == 2'b01 ? INFLAGS[FLAG_C] ^ ~INDEX[0] :
+                INDEX[2:1] == 2'b10 ? INFLAGS[FLAG_P] ^ ~INDEX[0] :
+                					  INFLAGS[FLAG_S] ^ ~INDEX[0];
 
 endmodule
 

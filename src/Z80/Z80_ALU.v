@@ -1,6 +1,7 @@
 `timescale 1ns / 1ps
 
 module Z80_ALU (
+	
 	input  reg		[ 4: 0]	OPCODE,									// This is the ALU opcode (NOT the CPU opcode)
 	input  reg		[ 7: 0]	OP1,
 	input  reg		[ 7: 0]	OP2,
@@ -158,8 +159,6 @@ SRL8 srl0 (
 	.PART_FLAGS(	PART_FLAGS)
 );
 
-endmodule
-
 ////////////////////////////////////////////////////////////////
 // FLAG SETTER
 
@@ -174,10 +173,11 @@ module FLAGSETTER (										 			// Set flags according to partial result and fl
 						FALSE,
 						PART_FLAGS[PFLAG_H],						// Half carry
 						FALSE,
-						(OPCODE[4:2] == 0 | OPCODE == 5'd7) ?		// For arithmetic operations (ADD/ADC/SUB/SBC/CP)
+					   (OPCODE[4:2] == 0 | OPCODE == 5'd7) ?		// For arithmetic operations (ADD/ADC/SUB/SBC/CP)
 							 PART_FLAGS[PFLAG_C] ^					// Calculate overflow
-							 PART_FLAGS[PFLAG_V] :
-						   ~(PART_RESULT[7] ^						// Else calculate parity
+							 PART_FLAGS[PFLAG_V]
+							 :
+						   ~(PART_RESULT[7] ^						// Or calculate parity
 							 PART_RESULT[6] ^
 							 PART_RESULT[5] ^ 
 							 PART_RESULT[4] ^ 
@@ -190,8 +190,10 @@ module FLAGSETTER (										 			// Set flags according to partial result and fl
 
 endmodule
 
+endmodule
+
 ////////////////////////////////////////////////////////////////
-// SET FLAGS
+// SET FLAGS (carry and result passed through)
 
 module FLG8 (														// Set flags only.  Carry in so we can retain its state
 	input		[ 7: 0]	OP1,
@@ -201,8 +203,8 @@ module FLG8 (														// Set flags only.  Carry in so we can retain its sta
 	output		[ 3: 0]	PART_FLAGS	
 );
 
-assign PART_RESULT = ENABLE ?			  OP1 : 8'bz;				// Transfer the input value
-assign PART_FLAGS  = ENABLE ? { CARRY, 3'b0 } : 4'bz;				// and carry in to the result and output flags
+assign PART_RESULT = ENABLE ?			  OP1 : 8'bz;				// Transfer the input operand to result
+assign PART_FLAGS  = ENABLE ? { CARRY, 3'b0 } : 4'bz;				// and carry in to the output flags
 
 endmodule
 
@@ -488,7 +490,7 @@ endmodule
 ////////////////////////////////////////////////////////////////
 // Primitives
 
-primitive ADDSUB1 (
+primitive ADDSUB1 (													// Add AND subtract one bit with carry
 	output 				R,
 	input 				A, B, C
 );
@@ -507,7 +509,7 @@ primitive ADDSUB1 (
 
 endprimitive
 
-primitive ADDC1 (
+primitive ADDC1 (													// Calculate carry for one bit addition
 	output 				R,
 	input 				A, B, C
 );
@@ -527,7 +529,7 @@ primitive ADDC1 (
 endprimitive
 
 
-primitive SUBC1 (
+primitive SUBC1 (													// Calculate carry for one bit subtraction
 	output 				R,
 	input 				A, B, C
 );
@@ -546,7 +548,7 @@ primitive SUBC1 (
 
 endprimitive
 
-primitive AND1 (
+primitive AND1 (													// One bit logical AND
 	output 				R,
 	input 				A, B
 );
@@ -561,7 +563,7 @@ primitive AND1 (
 
 endprimitive
 
-primitive OR1 (
+primitive OR1 (														// One bit logical OR
 	output 				R,
 	input 				A, B
 );
@@ -576,7 +578,7 @@ primitive OR1 (
 
 endprimitive
 
-primitive XOR1 (
+primitive XOR1 (													// One bit logical XOR
 	output 				R,
 	input 				A, B
 );
