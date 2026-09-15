@@ -22,17 +22,34 @@ module ukp(
     output 				CON_ERROR
 );
 
-    parameter			S_OPCODE	=  0;			// FSM STATEs
-    parameter			S_LDI0		=  1;
-    parameter			S_LDI1		=  2;
-    parameter			S_B0		=  3;
-    parameter			S_B1		=  4;
-    parameter			S_B2		=  5;
-    parameter			S_S0 		=  6;
-    parameter			S_S1 		=  7;
-    parameter			S_S2 		=  8;
-    parameter			S_TOGGLE0	=  9;
-    parameter			S_TOGGLE1	= 10;
+    localparam			S_OPCODE	=  0;			// FSM STATEs
+    localparam			S_LDI0		=  1;
+    localparam			S_LDI1		=  2;
+    localparam			S_B0		=  3;
+    localparam			S_B1		=  4;
+    localparam			S_B2		=  5;
+    localparam			S_S0 		=  6;
+    localparam			S_S1 		=  7;
+    localparam			S_S2 		=  8;
+    localparam			S_TOGGLE0	=  9;
+    localparam			S_TOGGLE1	= 10;
+
+	localparam			I_NOP		= 4'h0;
+    localparam			I_LDI		= 4'h1;
+    localparam			I_START		= 4'h2;
+    localparam			I_OUT4		= 4'h3;
+    localparam			I_OUT0		= 4'h4;
+    localparam			I_HIZ		= 4'h5;
+    localparam			I_OUTB		= 4'h6;
+    localparam			I_RET		= 4'h7;
+    localparam			I_BZ		= 4'h8;
+    localparam			I_BC		= 4'h9;
+    localparam			I_BNAK		= 4'hA;
+    localparam			I_DJNZ		= 4'hB;
+    localparam			I_TOGSAV	= 4'hC;
+    localparam			I_IN		= 4'hD;
+    localparam			I_WAIT		= 4'hE;
+    localparam			I_JMP		= 4'hF;
 
     wire		[ 3: 0]	INST;
     reg			[ 3: 0] INST_H;
@@ -59,11 +76,11 @@ module ukp(
     reg			[ 3: 0] STATED;
 
     reg			[ 7: 0] WK          = 0;		    // W register
-    reg			[ 7: 0] SB          = 0;		    // out value
+    reg			[ 7: 0] SB          = 0;		    // out value byte being written
     reg			[ 3: 0] SADR;						// out4/outb write ptr
     
 	reg         [13: 0] PC          = 0;
-    reg         [13: 0] NEXT_PC;					// program counter, wpc = next pc
+    reg         [13: 0] NEXT_PC;					// program counter, next pc
 
     reg			[ 2: 0] TIMING		= 0;			// T register (0~7)
     
@@ -81,18 +98,18 @@ module ukp(
     wire				INTERVAL_CY = INTERVAL == 12001;
 
     wire 				NEXT =  ~(STATE == S_OPCODE &
-									(INST == 2  &
+									(INST == I_START  &
 									 DMI |												// start
-									(INST == 4  || INST==5) & 
+									(INST == I_OUT0  || INST==I_HIZ) & 
 									TIMING != 0 |										// out0/hiz
-									INST == 13 & (~SAMPLE | (DPI | DMI) & WK != 1) |	// in 
-									INST == 14 &
+									INST == I_IN & (~SAMPLE | (DPI | DMI) & WK != 1) |	// in 
+									INST == I_WAIT &
 									~INTERVAL_CY)										// wait
     							);
 
     wire				BRANCH = STATE == S_B1 & COND;
-    wire 				RETPC  = STATE == S_OPCODE && INST==7  ? 1 : 0;
-    wire 				JMPPC  = STATE == S_OPCODE && INST==15 ? 1 : 0;
+    wire 				RETPC  = STATE == S_OPCODE && INST==I_RET  ? 1 : 0;
+    wire 				JMPPC  = STATE == S_OPCODE && INST==I_JMP ? 1 : 0;
     wire				DBIT   = SB[7-SADR[2:0]];
 
     wire				RECORD;
@@ -107,7 +124,11 @@ module ukp(
 
     assign				CON_ERROR = CONCT[23] || ~RESET;
 
-    usb_hid_host_rom ukprom(.clk(USB_CLK), .adr(PC), .data(INST));
+USB_HID_HOST_ROM 	UKPROM(
+	.CLK(				USB_CLK), 
+	.ADDRESS(			PC),
+	.DATA(				INST)
+);
 
     always @(posedge USB_CLK) begin
 
@@ -136,45 +157,70 @@ module ukp(
 
                     S_OPCODE: begin
 
-                        INST_H		<= INST;                        
-						if (INST == 1) STATE <= S_LDI0;							// op=ldi
+                        INST_H		    <= INST;                                // Make a copy of the instruction
 
-                        if (INST == 3 ) begin									// op=out4
-							SADR	<= 3;
-							STATE	<= S_S0;
-						 end
+						case (INST)
 
-                        if (INST == 4) begin 
-							OE			<= 1'b1;
+						I_LDI: begin											// 1 - LDI
+							STATE       <= S_LDI0;								// Collect the following 2 nibbles into WK
+						end
+
+						I_OUT0: begin											// 4 - Output to zero
+							OE			<= 1'b1;								// Enable output and set both USB data lines to 0
 							USB_DATA_p	<= 0;
 							USB_DATA_m	<= 0;
-						 end
+						end
 
-                        if (INST == 5) OE	<= 0;
+						I_OUT4: begin											// 3 - Output 4 bits
+							SADR	    <= 3;
+							STATE       <= S_S0;
+						end
 
-                        if (INST == 6) begin									// op=outb
+						I_OUTB: begin											// 6 - Output byte
 							SADR	<= 7;
 							STATE	<= S_S0;
 						end
 
-                        if (INST[3:2]==2'b10) begin								// op=10xx(BZ,BC,BNAK,DJNZ)
-                            STATE <= S_B0;
-                            case (INST[1:0])
-                                2'b00: COND <= ~DMI;
-                                2'b01: COND <= CONNECTED;
-                                2'b10: COND <= NAK;
-                                2'b11: COND <= WK != 1;
-                            endcase
-                        end
+						I_HIZ: begin
+							OE			<= 0;
+						end
 
-                        if (INST == 11 | INST == 13 & SAMPLE) WK <= WK - 8'd1;	// op=DJNZ,IN
+						I_BZ: begin	
+							STATE	<= S_B0;
+							COND 	<= ~DMI;
+						end
+						
+						I_BC: begin	
+							STATE	<= S_B0;
+							COND 	<= CONNECTED;
+						end
+						
+						I_BNAK: begin	
+							STATE	<= S_B0;
+							COND 	<= NAK;
+						end
 
-                        if (INST == 15) begin									// op=jmp
+						I_DJNZ: begin	
+							STATE	<= S_B0;
+							WK <= WK - 8'd1;
+							COND 	<= WK != 1;
+						end
+						
+						I_JMP: begin
 							STATE <= S_B2;
 							COND <= 1;
 						 end
 
-                        if (INST == 12) STATE <= S_TOGGLE0;
+                        I_TOGSAV: begin
+							STATE <= S_TOGGLE0;
+						end
+
+                        I_IN: begin
+							if (SAMPLE) WK <= WK - 8'd1;
+						end
+
+						endcase
+
                     end
 
                     // Instructions with operands
@@ -188,22 +234,23 @@ module ukp(
 						WK[7:4] <= INST;
 						STATE <= S_OPCODE;
 					end
-                    					
-                    S_B2: begin													// branch/jmp
+
+
+                    S_B2: begin													// jmp collect 2 nibbles
 						LB4W <= INST;
 						STATE <= S_B0; 
 					end
 
-                    S_B0: begin
+                    S_B0: begin													// branch/jmp collect 1 nibble
 						LB4  <= INST;
 						STATE <= S_B1; 
 					end
                     
-					S_B1: begin
+					S_B1: begin													// Branch/jmp done
 						STATE <= S_OPCODE;
 					end
                     
-					// out
+
                     S_S0: begin
 						SB[3:0] <= INST;
 						STATE <= S_S1;
@@ -212,22 +259,22 @@ module ukp(
                     S_S1: begin
 						SB[7:4] <= INST;
 						STATE <= S_S2;
-						MBIT <= 1;
+						MBIT <= 1;												// Indicates bit transmission
 					end
                     
 					S_TOGGLE0: begin											// toggle and save
-                        if (INST == 15)
-							CONNECTED	<= ~CONNECTED;							// toggle
+                        if (INST == 15)											// The 1st the nibble following the opcode
+							CONNECTED	<= ~CONNECTED;							// $F for toggle
                         else
-							SAVE_R		<= INST;								// save
+							SAVE_R		<= INST;								// anything else for save
 
                         STATE <= S_TOGGLE1;
                     end
 
                     S_TOGGLE1: begin
-                        if (INST != 15) begin
-                            SAVE_B	<= INST;
-                            SAVE	<= 1;
+                        if (INST != 15) begin									// The 2nd nibble following the opcode
+                            SAVE_B	<= INST;									// Both SAVE_R and SAVE_B have been set
+                            SAVE	<= 1;										// Indicate SAVE
                         end
 
                         STATE <= S_OPCODE;
@@ -236,23 +283,23 @@ module ukp(
 				endcase
 
                 // pc control
-                if (MBIT == 0) begin 
+                if (MBIT == 0) begin 											// If NOT transmitting
 					
-                    if (JMPPC) NEXT_PC <= PC + 4;
+                    if (JMPPC) NEXT_PC <= PC + 4;								// JMP is actually CALL and this is the return address
                     
 					if (NEXT | BRANCH | RETPC) begin
 
                         if (RETPC)
-							PC <= NEXT_PC;									// ret
+							PC <= NEXT_PC;										// RETurn from JMP
 						else if (BRANCH)
-                            if (INST_H == 15)								// jmp
-                                PC <= { INST, LB4, LB4W, 2'b00 };
-                            else											// branch
-                                PC <= { 4'b0000, INST, LB4, 2'b00 };
+                            if (INST_H == I_JMP)								// jmp
+                                PC <= { INST, LB4, LB4W, 2'b00 };				// 3 nibbles (INST, LB4, LB4W)
+                            else												// branch
+                                PC <= { 4'b0000, INST, LB4, 2'b00 };			// 2 nibbles (0000, INST, LB4)
                         else
-							PC <= PC + 1;									// next
+							PC <= PC + 1;										// next PC
                         
-						INST_READY <= 0;
+						INST_READY <= 0;										// Wait 1 cycle for the next instruction
                     end
                 end
 
@@ -265,7 +312,7 @@ module ukp(
             // bit transmission (out4/outb)
             if (MBIT == 1 && TIMING == 0) begin
 
-                if(OE==0)
+                if (OE==0)
 					NRZI_TX_CNT <= 0;
                 else
                     if(DBIT)
@@ -273,7 +320,7 @@ module ukp(
                     else
 					    NRZI_TX_CNT <= 0;
 
-				if (INST_H == 4'd6) begin
+				if (INST_H == I_OUTB) begin
 
 					if (NRZI_TX_CNT != 6) begin
 					
@@ -291,8 +338,8 @@ module ukp(
 
 				end else begin
 
-					USB_DATA_p <=  SB[{1'b1,SADR[1:0]}];
-					USB_DATA_m <= SB[SADR[2:0]];
+					USB_DATA_p <= SB[{1'b1,	SADR[1:0]}];
+					USB_DATA_m <= SB[		SADR[2:0] ];
 
 				end
 
@@ -310,7 +357,7 @@ module ukp(
             // start instruction
             DMID <= DMI;
 
-            if (INST_READY & STATE == S_OPCODE & INST == 4'b0010) begin 	// op=start 
+            if (INST_READY & STATE == S_OPCODE & INST == I_START) begin 	// op=start 
 
                 BITADR		<= 0; 
 				NAK			<= 1;
@@ -370,7 +417,7 @@ module ukp(
 
             NAKD <= NAK;
 
-            if (DATA_READY && ~DATA_READY_D || INST_READY && STATE == S_OPCODE && INST == 4'b0010) begin
+            if (DATA_READY && ~DATA_READY_D || INST_READY && STATE == S_OPCODE && INST == I_START) begin
             
 			    CONCT <= 0;											// reset watchdog on data received or START instruction
 			
@@ -391,7 +438,7 @@ module ukp(
     assign USB_Dm = OE ? USB_DATA_m : 1'bZ;
     assign USB_OE = OE;
 
-    assign SAMPLE = INST_READY & STATE == S_OPCODE & INST == 4'b1101 & TIMING == 4; // IN
+    assign SAMPLE = INST_READY & STATE == S_OPCODE & INST == I_IN & TIMING == 4; // IN
 
     assign RECORD = CONNECTED & ~NAK;
 
