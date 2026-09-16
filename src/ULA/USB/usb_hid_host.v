@@ -52,8 +52,8 @@ ukp ukp(
 	.RESET(					RESET),
 	.USB_CLK(				USB_CLK),
 	
-	.USB_DP_EXT(			USB_DP),
-	.USB_DN_EXT(			USB_DN),
+	.USB_P_EXT(				USB_DP),
+	.USB_N_EXT(				USB_DN),
 	
 	.USB_OE_EXT(),
 

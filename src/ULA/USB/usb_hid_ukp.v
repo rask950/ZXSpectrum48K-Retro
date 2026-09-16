@@ -5,8 +5,8 @@ module ukp(
     input 				RESET,
     input 				USB_CLK,					// 12MHz clock
 
-    inout 				USB_DP_EXT,					// USB external connection D+, D-
-    inout 				USB_DN_EXT,
+    inout 				USB_P_EXT,					// USB external connection D+, D-
+    inout 				USB_N_EXT,
     output 				USB_OE_EXT,
 
     output reg 			DATA_READY, 				// data frame is outputing
@@ -61,7 +61,7 @@ module ukp(
     reg 				USB_OUT_N	= 0;
     reg					COND		= 0;
     reg					NAK			= 0;
-    reg					DMIS		= 0;
+    reg					USB_IN_NS	= 0;
 
     reg                 OE          = 0;    		// OE=1: output enabled, 0: hi-Z
     reg                 OE_W        = 0;
@@ -98,10 +98,10 @@ module ukp(
     wire				INTERVAL_CY = INTERVAL == 12001;									// Interval counter has reached its maximum value
 
     wire 				NEXT 		=  ~(STATE == S_OPCODE &
-										(INST == I_START & DMI |							// start
-										(INST == I_OUT0 || INST == I_HIZ) & TIMING  != 0 |	// out0/hiz
-										INST == I_IN & (~SAMPLE | (DPI | DMI) & WK != 1) |	// in 
-										INST == I_WAIT & ~INTERVAL_CY)						// wait
+										(INST  == I_START & USB_IN_N |						// start
+										(INST  == I_OUT0 || INST == I_HIZ) & TIMING  != 0 |	// out0/hiz
+										 INST  == I_IN	  & (~SAMPLE | (USB_IN_P | USB_IN_N) & WK != 1) |	// in 
+										 INST  == I_WAIT  & ~INTERVAL_CY)					// wait
 									);
 
     wire				BRANCH		= STATE == S_B1 & COND;									// Branch condition met
@@ -112,11 +112,11 @@ module ukp(
 
     wire				RECORD;
 
-    reg					DMID;
+    reg					USB_IN_ND;
     reg			[23: 0] CONCT;
 
-    reg					DPI; 
-	reg					DMI; 
+    reg					USB_IN_P; 
+	reg					USB_IN_N; 
     reg					DATA_READY_D;
     reg					NAKD;
 
@@ -145,8 +145,8 @@ USB_HID_HOST_ROM 	UKPROM(
 
         end else begin
 
-            DPI						<= USB_DP_EXT;								// USB physical connections
-			DMI 					<= USB_DN_EXT;
+            USB_IN_P				<= USB_P_EXT;								// USB physical connections
+			USB_IN_N 				<= USB_N_EXT;
 
             SAVE 					<= 0;										// ensure pulse
 
@@ -186,7 +186,7 @@ USB_HID_HOST_ROM 	UKPROM(
 
 						I_BZ: begin												// 8 - Branch if zero
 							STATE		<= S_B0;
-							COND 		<= ~DMI;
+							COND 		<= ~USB_IN_N;
 						end
 						
 						I_BC: begin												// 9 - Branch if connected
@@ -285,27 +285,28 @@ USB_HID_HOST_ROM 	UKPROM(
                 // pc control
                 if (MBIT == 0) begin 											// If NOT transmitting
 					
-                    if (JMPPC) NEXT_PC <= PC + 14'd4;							// JMP is actually CALL and this is the return address
+                    if (JMPPC) NEXT_PC	<= PC + 14'd4;							// JMP is actually CALL and this is the return address
                     
 					if (NEXT | BRANCH | RETPC) begin
 
                         if (RETPC)
-							PC <= NEXT_PC;										// RETurn from JMP
-						else if (BRANCH)
-                            if (INST_H == I_JMP)								// jmp
-                                PC <= { INST, LB4, LB4W, 2'b00 };				// 3 nibbles (INST, LB4, LB4W) * 4
-                            else												// branch
-                                PC <= { 4'b0000, INST, LB4, 2'b00 };			// 2 nibbles (0000, INST, LB4) * 4
-                        else
-							PC <= PC + 14'd1;									// next PC
+							PC 			<= NEXT_PC;								// RETurn from JMP
+						else
+							if (BRANCH)
+	                            if (INST_H == I_JMP)							// jmp
+	                                PC	<= { INST, LB4, LB4W, 2'b00 };			// 3 nibbles (INST, LB4, LB4W) * 4
+	                            else											// branch
+	                                PC	<= { 4'b0000, INST, LB4, 2'b00 };		// 2 nibbles (0000, INST, LB4) * 4
+	                        else
+								PC		<= PC + 14'd1;							// next PC
                         
-						INST_READY <= 0;										// Wait 1 cycle for the next instruction
+						INST_READY		<= 0;									// Wait 1 cycle for the next instruction
                     end
                 end
 
 			end else begin
 			
-				INST_READY <= 1;
+				INST_READY 			<= 1;
 
 			end
 
@@ -313,7 +314,7 @@ USB_HID_HOST_ROM 	UKPROM(
             if (MBIT == 1 && TIMING == 0) begin
 
                 if (OE == 0)
-					NRZI_TX_CNT <= 0;
+					NRZI_TX_CNT		<= 0;
                 else
                     if (DBIT)
 						NRZI_TX_CNT <= NRZI_TX_CNT + 3'd1;
@@ -324,13 +325,13 @@ USB_HID_HOST_ROM 	UKPROM(
 
 					if (NRZI_TX_CNT != 6) begin
 					
-						USB_OUT_P <= DBIT ?  USB_OUT_P : ~USB_OUT_P;
-						USB_OUT_N <= DBIT ? ~USB_OUT_P :  USB_OUT_P;
+						USB_OUT_P	<= DBIT ?  USB_OUT_P : ~USB_OUT_P;
+						USB_OUT_N	<= DBIT ? ~USB_OUT_P :  USB_OUT_P;
 					
 					end	else begin
 
-						USB_OUT_P <= ~USB_OUT_P;
-						USB_OUT_N <=  USB_OUT_P;
+						USB_OUT_P	<= ~USB_OUT_P;
+						USB_OUT_N	<=  USB_OUT_P;
 
 						NRZI_TX_CNT <= 0;
 
@@ -338,66 +339,70 @@ USB_HID_HOST_ROM 	UKPROM(
 
 				end else begin
 
-					USB_OUT_P <= SB[{1'b1,	SADR[1:0]}];
-					USB_OUT_N <= SB[		SADR[2:0] ];
+					USB_OUT_P		<= SB[{1'b1, SADR[1:0]}];
+					USB_OUT_N		<= SB[		 SADR[2:0] ];
 
 				end
 
                 OE <= 1'b1; 
 
-                if (NRZI_TX_CNT != 6) SADR <= SADR - 4'd1;
+                if (NRZI_TX_CNT != 6)
+					SADR 			<= SADR - 3'd1;
 
                 if (SADR == 0) begin
-					MBIT <= 0;
-					STATE <= S_OPCODE;
+					MBIT			<= 0;
+					STATE			<= S_OPCODE;
 				end
 
             end
 
             // start instruction
-            DMID <= DMI;
+            USB_IN_ND <= USB_IN_N;
 
-            if (INST_READY & STATE == S_OPCODE & INST == I_START) begin 	// op=start 
+            if (INST_READY & 
+				STATE == S_OPCODE & 
+				INST  == I_START) begin 							// op=start 
 
-                BITADR		<= 0; 
-				NAK			<= 1;
-				NRZI_RX_CNT <= 0;
+                BITADR				<= 0; 
+				NAK					<= 1;
+				NRZI_RX_CNT			<= 0;
 
 			end else begin 
 
-                if (OE == 0 && DMI != DMID)
-					TIMING <= 1;
+                if (OE == 0 && 
+					USB_IN_N		!= USB_IN_ND)
+					TIMING			<= 1;
                 else
-					TIMING <= TIMING + 3'd1;
+					TIMING 			<= TIMING + 3'd1;
 
 			end
 
             // IN instruction
             if (SAMPLE) begin
 
-                if (BITADR == 8) NAK <= DMI;
+                if (BITADR == 8) NAK <= USB_IN_N;
 
-                if (NRZI_RX_CNT != 6) begin
+                if (NRZI_RX_CNT		!= 6) begin
 
-                    DATA[6:0]	<= DATA[7:1]; 
-                    DATA[7]		<= DMIS ~^ DMI;		    			// ~^/^~ is XNOR, testing bit equality
-                    BITADR		<= BITADR + 7'd1;
-					NRZON		<= 0;
+                    DATA[6:0]		<= DATA[7:1]; 
+                    DATA[7]			<= USB_IN_NS ~^ USB_IN_N;		// ~^/^~ is XNOR, testing bit equality
+                    BITADR			<= BITADR + 7'd1;
+					NRZON			<= 0;
 
 				end else begin
 
-					NRZON <= 1;
+					NRZON			<= 1;
 
 				end
 
-                DMIS <= DMI;
+                USB_IN_NS			<= USB_IN_N;
 				
-                if (DMIS ~^ DMI)
-					NRZI_RX_CNT <= NRZI_RX_CNT + 3'd1;
+                if (USB_IN_NS ~^ USB_IN_N)
+					NRZI_RX_CNT		<= NRZI_RX_CNT + 3'd1;
                 else
-				    NRZI_RX_CNT <= 0;
+				    NRZI_RX_CNT		<= 0;
 
-                if (~DMI && ~DPI) DATA_READY <= 0;      			// SE0: packet is finished. Mouses send length 4 reports.
+                if (~USB_IN_N && ~USB_IN_P) DATA_READY <= 0;      			// SE0: packet is finished. Mouses send length 4 reports.
             end
 
             if (OE == 0) begin
@@ -408,40 +413,43 @@ USB_HID_HOST_ROM 	UKPROM(
             if ((BITADR > 11 & BITADR[2:0] == 3'b000) & (TIMING == 2)) DATA_OUT <= DATA;
 
             // Timing
-            INTERVAL <= INTERVAL_CY ? 14'd0 : INTERVAL + 14'd1;
-            RECORD1	 <= RECORD;
+            INTERVAL				<=	INTERVAL_CY ? 14'd0 :
+										INTERVAL	+ 14'd1;
+
+            RECORD1					<= RECORD;
             if (~RECORD & RECORD1) BANK <= ~BANK;
 
             // Connection status & WDT
-            DATA_READY_D <= DATA_READY;
+            DATA_READY_D			<= DATA_READY;
 
-            NAKD <= NAK;
+            NAKD					<= NAK;
 
             if (DATA_READY && ~DATA_READY_D || INST_READY && STATE == S_OPCODE && INST == I_START) begin
             
-			    CONCT <= 0;											// reset watchdog on data received or START instruction
+			    CONCT 				<= 0;							// reset watchdog on data received or START instruction
 			
 			end else begin 
             
-			    if (CONCT[23:22] != 2'b11) begin
-					CONCT <= CONCT + 24'd1;
+			    if (CONCT[23:22] 	!= 2'b11) begin
+					CONCT			<= CONCT + 24'd1;
 				end else begin 
-					PC <= 0; 
-					CONCT <= 0;
+					PC				<= 0; 
+					CONCT			<= 0;
 				end		// !! WDT ON
             
 			end 
         end
     end
 
-    assign USB_DP_EXT = OE ? USB_OUT_P : 1'bZ;
-    assign USB_DN_EXT = OE ? USB_OUT_N : 1'bZ;
-    assign USB_OE_EXT = OE;
+    assign USB_P_EXT	= OE ? USB_OUT_P : 1'bZ;
+    assign USB_N_EXT	= OE ? USB_OUT_N : 1'bZ;
 
-    assign SAMPLE = INST_READY & STATE == S_OPCODE & INST == I_IN & TIMING == 4; // IN
+    assign USB_OE_EXT	= OE;
 
-    assign RECORD = CONNECTED & ~NAK;
+    assign SAMPLE		= INST_READY & STATE == S_OPCODE & INST == I_IN & TIMING == 4; // IN
 
-    assign DATA_STROBE = ~NRZON & DATA_READY & (BITADR[2:0] == 3'b100) & (TIMING == 2);
+    assign RECORD 		= CONNECTED & ~NAK;
+
+    assign DATA_STROBE	= ~NRZON & DATA_READY & (BITADR[2:0] == 3'b100) & (TIMING == 2);
 
 endmodule
