@@ -1,9 +1,14 @@
+;USB processor hex code disassembly
+;Each address is for a SINGLE HEX DIGIT (4 bits)
+;Jump (call) and Branch addresses end 2'b00 so MUST be a MULTIPLE OF 4 (hence the NOP fillers)
+
 $0000 1	cstart: LDI $09
 $0001 9	
 $0002 0	
-$0003 0	cstart2: NOP
-$0004 e	WAIT
-$0005 9	BC $2A connected
+$0003 0	NOP
+
+$0004 e	cstart2: WAIT
+$0005 9	BC $A8 connected
 $0006 a	
 $0007 2	
 $0008 8	BZ $00 cstart
@@ -14,523 +19,543 @@ $000C 8
 $000D c	
 $000E 0	NOP
 $000F 0	NOP
+
 $0010 e	w200ms: WAIT
-$0011 b	DJNZ $04 w200ms
+$0011 b	DJNZ $10 w200ms
 $0012 4	
 $0013 0	
-$0014 f	JMP $034 reset
+$0014 f	JMP $0D0 reset
 $0015 4
 $0016 3
 $0017 0
-$0018 f JMP $048 getconfig
+$0018 f JMP $120 getconfig
 $0019 8
 $001A 4
 $001B 0
 $001C 5 HIZ
-$001D f JMP $072 rcvdt
+$001D f JMP $1C8 rcvdt
 $001E 2
 $001F 7
 $0020 0
 $0021 0 NOP
 $0022 0 NOP
 $0023 0 NOP
-$0024 f JMP $0777
+
+$0024 f wait_config: JMP $1DC in00
 $0025 7
 $0026 7
 $0027 0
 $0028 5 HIZ
-$0029 f JMP $072
+$0029 f JMP $1C8 rcvdt
 $002A 2
 $002B 7
 $002C 0
-$002D a BNAK $09
+$002D a BNAK $24 wait_config
 $002E 9
 $002F 0
-$0020 f JMP $083
-$0020 3
-$0020 8
-$0020 0
-$0020 5 HIZ
-$0020 0 NOP
-$0020 0 NOP
-$0020 0 NOP
-$0020 f JMP $077
-$0000 7
-$0000 7
-$0000 0
-$0000 5 HIZ
-$0000 f JMP $072
-$0000 2
-$0000 7
-$0000 0
-$0000 a BNAK $0E
-$0000 e
-$0000 0
-$0000 c SAVE 4,6
-$0000 4
-$0000 6
-$0000 c 
-$0000 5
-$0000 7
-$0000 f
-$0000 3
-$0000 8
-$0000 0
-$0000 5
-$0000 0
-f
-7
-7
-0
-5
-f
-2
-7
-0
-a
-4
-1
-c
-6
-0
-f
-3
-8
-0
-5
-f
-4
-3
-0
-f
-6
-5
-0
-5
-f
-2
-7
-0
-0
-0
-0
-f
-7
-7
-0
-5
-f
-2
-7
-0
-a
-d
-1
-f
-3
-8
-0
-5
-e
-f
-4
-6
-0
-5
-f
-2
-7
-0
-0
-f
-b
-7
-0
-5
-f
-2
-7
-0
-a
-4
-2
-f
-3
-8
-0
-5
-c
-f
-f
-f
-0
-0
-0
-8
-2
-3
-3
-3
-0
-5
-b
-1
-0
-e
-f
-f
-7
-0
-5
-f
-2
-7
-0
-a
-0
-0
-f
-3
-8
-0
-5
-f
-0
-0
-0
-c
-f
-f
-f
-0
-0
-0
-0
-4
-1
-a
-0
-e
-b
-5
-3
-5
-1
-8
-2
-e
-3
-3
-0
-5
-b
-7
-3
-e
-7
-0
-0
-6
-0
-8
-6
-d
-2
-6
-0
-0
-6
-0
-1
-3
-3
-0
-6
-0
-8
-6
-3
-c
-6
-0
-8
-6
-6
-0
-6
-0
-0
-6
-1
-0
-6
-0
-0
-6
-0
-0
-6
-2
-1
-6
-0
-0
-6
-0
-e
-6
-4
-f
-3
-3
-0
-7
-0
-6
-0
-8
-6
-d
-2
-6
-0
-0
-6
-0
-1
-3
-3
-0
-6
-0
-8
-6
-3
-c
-6
-0
-8
-6
-6
-0
-6
-0
-0
-6
-2
-0
-6
-0
-0
-6
-0
-0
-6
-8
-1
-6
-0
-0
-6
-2
-a
-6
-4
-5
-3
-3
-0
-7
-0
-6
-0
-8
-6
-d
-2
-6
-0
-0
-6
-0
-1
-3
-3
-0
-6
-0
-8
-6
-3
-c
-6
-0
-0
-6
-5
-0
-6
-1
-0
-6
-0
-0
-6
-0
-0
-6
-0
-0
-6
-0
-0
-6
-0
-0
-6
-b
-e
-6
-5
-2
-3
-3
-0
-7
-0
-6
-0
-8
-6
-d
-2
-6
-1
-0
-6
-8
-e
-3
-3
-0
-6
-0
-8
-6
-3
-c
-6
-0
-0
-6
-9
-0
-6
-1
-0
-6
-0
-0
-6
-0
-0
-6
-0
-0
-6
-0
-0
-6
-0
-0
-6
-7
-2
-6
-5
-2
-3
-3
-0
-7
-0
-1
-8
-6
-2
-d
-0
-0
-0
-1
-2
-0
-0
-8
-4
-7
-b
-5
-7
-7
-0
-6
-0
-8
-6
-9
-6
-6
-0
-0
-6
-0
-1
-3
-3
-0
-7
-6
-0
-8
-6
-9
-6
-6
-1
-0
-6
-8
-e
-3
-3
-0
-7
-6
-0
-8
-6
-9
-6
-6
-1
-8
-6
-8
-5
-3
-3
-0
-7
-6
-0
-8
-6
-2
-d
-3
-3
-0
-7
-0
-0
+$0030 f JMP $20C send_ack
+$0031 3
+$0032 8
+$0033 0
+$0034 5 HIZ
+$0035 0 NOP
+$0036 0 NOP
+$0037 0 NOP
+
+$0038 f wait_config2: JMP $1DC in00
+$0039 7
+$003A 7
+$003B 0
+$003C 5 HIZ
+$003D f JMP $1C8 rcvdt
+$003E 2
+$003F 7
+$0040 0
+$0041 a BNAK $38 wait_config2
+$0042 e
+$0043 0
+$0044 c SAVE 4,6		;interface class
+$0045 4
+$0046 6
+$0047 c SAVE 5,7		;interface sub class
+$0048 5
+$0049 7
+$004A f JMP $20C send_ack
+$004B 3
+$004C 8
+$004D 0
+$004E 5 HIZ
+$004F 0 NOP
+
+$0050 f wait_interface: JMP $1DC in00
+$0051 7
+$0052 7
+$0053 0
+$0054 5 HIZ
+$0055 f JMP $1C8 rcvdt
+$0056 2
+$0057 7
+$0058 0
+$0059 a BNAK $50 wait_interface
+$005A 4
+$005B 1
+$005C c SAVE 6, 0		;interface protocol
+$005D 6 
+$005E 0
+$005F f JMP $20C send_ack
+$0060 3
+$0061 8
+$0062 0
+$0063 5 HIZ
+$0064 f JMP $0D0 reset
+$0065 4
+$0066 3
+$0067 0
+$0068 f JMP $224 setadr1	;Initialization sequence
+$0069 6
+$006A 5
+$006B 0
+$006C 5 HIZ
+$006D f JMP $1C8 rcvdt
+$006E 2
+$006F 7
+$0070 0
+$0071 0 NOP
+$0072 0 NOP
+$0073 0 NOP
+
+$0074 f sendinlp: JMP $1DC in00
+$0075 7
+$0076 7
+$0077 0
+$0078 5 HIZ
+$0079 f JMP $1C8 rcvdt
+$007A 2
+$007B 7
+$007C 0
+$007D a BNAK $074 sendinlp
+$007E d
+$007F 1
+$0080 f JMP $20C send_ack
+$0081 3
+$0082 8
+$0083 0
+$0084 5 HIZ
+$0085 e WAIT
+$0086 f JMP $256 setconfig1
+$0087 4 
+$0088 6
+$0089 0
+$008A 5 HIZ
+$008B f JMP $1C8 rcvdt
+$008C 2
+$008D 7
+$008E 0
+$008F 0 NOP
+$0090 f in10lp: JMP $1EC in10
+$0091 b
+$0092 7
+$0093 0
+$0094 5 HIZ
+$0095 f JMP $1C8 rcvdt
+$0096 2
+$0097 7
+$0098 0
+$0099 a BNAK in10lp
+$009A 4
+$009B 2
+$009C f JMP $20C send_ack
+$009D 3
+$009E 8
+$009F 0
+$00A0 5 HIZ
+$00A1 c TOGGLE
+$00A2 f  
+$00A3 f
+$00A4 f JMP $000 cstart
+$00A5 0
+$00A6 0
+$00A7 0
+
+$00A8 8 connected: BZ $0C8 connerr
+$00A9 2 
+$00AA 3
+$00AB 3 OUT4 $03
+$00AC 3
+$00AD 0
+$00AE 5 HIZ
+$00AF b DJNZ $004 cstart2
+$00B0 1
+$00B1 0
+$00B2 e WAIT
+$00B3 f JMP $1FC in11		;interrupt transfer
+$00B4 f
+$00B5 7
+$00B6 0
+$00B7 5 HIZ
+$00B8 f JMP $1C8 rcvdt
+$00B9 2
+$00BA 7
+$00BB 0
+$00BC a BNAK $000 cstart
+$00BD 0
+$00BE 0
+$00BF f JMP $20C send_ack
+$00C0 3
+$00C1 8
+$00C2 0
+$00C3 5 HIZ
+$00C4 f JMP $000 cstart
+$00C5 0
+$00C6 0
+$00C7 0
+
+$00C8 c conerr: TOGGLE
+$00C9 f
+$00CA f
+$00CB f JMP $000 cstart
+$00CC 0
+$00CD 0
+$00CE 0
+$00CF 0 NOP
+
+$00D0 4 reset: OUT0			;USB bus reset
+$00D1 1 LDI $0A
+$00D2 a
+$00D3 0
+
+$00D4 e busrstlp: WAIT		;wait 10ms
+$00D5 b DJNZ $D4 busrstlp
+$00D6 5
+$00D7 3
+$00D8 5 HIZ
+$00D9 1 LDI $28
+$00DA 8 
+$00DB 2 
+
+$00DC e w40ms: WAIT
+$00DD 3 OUT4 $03			;keep alive
+$00DE 3
+$00DF 0
+$00E0 5 HIZ
+$00E1 b DJNZ $w40ms
+$00E2 7
+$00E3 3
+$00E4 e WAIT
+$00E5 7 RET
+$00E6 0 NOP
+$00E7 0 NOP
+
+$00E8 6 getdesc: OUTB $80	;sync - get device descriptor
+$00E9 0
+$00EA 8
+$00EB 6 OUTB $2D			;PID
+$00EC d 
+$00ED 2
+$00EE 6 OUTB $00			;addr:endp = 0:0
+$00EF 0
+$00F0 0
+$00F1 6 OUTB $10			;crc5
+$00F2 0
+$00F3 1
+$00F4 3 OUT4 $03			;eop
+$00F5 3
+$00F6 0
+$00F7 6 OUTB $80			;sync
+$00F8 0
+$00F9 8
+$00FA 6 OUTB $C3			;PID = DATA0
+$00FB 3
+$00FC c
+$00FD 6 OUTB $80			;bmRequestType 80
+$00FE 0
+$00FF 8
+$0100 6 OUTB $06			;brequest 6 get descriptor
+$0101 6
+$0102 0
+$0103 6 OUTB $00			;desc index 0
+$0104 0
+$0105 0
+$0106 6 OUTB $01			;desc type: 1 device
+$0107 1
+$0108 0
+$0109 6 OUTB $00			;language id 0
+$010A 0
+$010B 0
+$010C 6 OUTB $00
+$010D 0
+$010E 0
+$010F 6 OUTB $12			;length 18
+$0110 2
+$0111 1
+$0112 6 OUTB $00
+$0113 0
+$0114 0
+$0115 6 OUTB $E0			;crc16
+$0116 0
+$0117 e
+$0118 6 OUTB $F4
+$0119 4
+$011A f
+$011B 3 OUT4 $03			;eop
+$011C 3
+$011D 0
+$011E 7 RET
+$011F 0 NOP
+
+$0120 6 getconfig: OUTB $80	;sync get config descriptor (0,0)
+$0121 0 
+$0122 8
+$0123 6 OUTB $2D			;PID
+$0124 d
+$0125 2
+$0126 6 OUTB $00			;add:endp = 0,0
+$0127 0
+$0128 0
+$0129 6 OUTB $10			;crc5
+$012A 0
+$012B 1
+$012C 3 OUT4 $03			;eop
+$012D 3
+$012E 0
+$012F 6 OUTB $80			;sync
+$0130 0
+$0131 8
+$0132 6 OUTB $C3			;PID=DATA0
+$0133 3
+$0134 c
+$0135 6 OUTB $80			;bmRequestType: 0
+$0136 0
+$0137 8
+$0138 6 OUTB $06			;bmRequest 6 - get descriptor
+$0139 6
+$013A 0
+$013B 6 OUTB $00			;Desc index 0
+$013C 0
+$013D 0
+$013E 6 OUTB $02			;desc type 2 - config
+$013F 2
+$0140 0
+$0141 6 OUTB $00			;language id
+$0142 0
+$0143 0
+$0144 6 OUTB $00
+$0145 0
+$0146 0
+$0147 6 OUTB $18			;length 24
+$0148 8
+$0149 1
+$014A 6 OUTB $00
+$014B 0
+$014C 0
+$014D 6 OUTB $A2			;crc16
+$014E 2
+$014F a
+$0150 6 OUTB $54
+$0151 4
+$0152 5
+$0153 3 OUT4 $03			;eop
+$0154 3
+$0155 0
+$0156 7 RET
+$0157 0 NOP
+
+$0158 6 setadr1: OUTB $80	;sync set address of dev 0 to 1
+$0159 0
+$015A 8
+$015B 6 OUTB $2D			;PID
+$015C d
+$015D 2
+$015E 6 OUTB $00			;add:endp 0,0
+$015F 0
+$0160 0
+$0161 6 OUTB $10			;crc5
+$0162 0
+$0163 1
+$0164 3 OUT4 $03			;eop
+$0165 3
+$0166 0
+$0167 6 OUTB $80			;sync
+$0168 0
+$0169 8
+$016A 6 OUTB $C3			;PID=DATA0
+$016B 3
+$016C c
+$016D 6 OUTB $00			;bmRequestType 0
+$016E 0
+$016F 0
+$0170 6 OUTB $05			;bmRequest 5 - set addr
+$0171 5
+$0172 0
+$0173 6 OUTB $01			;Desc index 1
+$0174 1
+$0175 0
+$0176 6 OUTB $00			;desc type 0
+$0177 0
+$0178 0
+$0179 6 OUTB $00			;language id
+$017A 0
+$017B 0
+$017C 6 OUTB $00
+$017D 0
+$017E 0
+$017F 6 OUTB $00			;length 0?
+$0180 0
+$0181 0
+$0182 6 OUTB $00
+$0183 0
+$0184 0
+$0185 6 OUTB $EB			;crc16
+$0186 b
+$0187 e
+$0188 6 OUTB $25
+$0189 5
+$018A 2
+$018B 3 OUT4 $03			;eop
+$018C 3
+$018D 0
+$018E 7 RET
+$018F 0 NOP
+
+$0190 6 setconfig1: OUTB $80 	;sync - set config of dev 1 to default (1)
+$0191 0
+$0192 8
+$0193 6 OUTB $2D			;PID
+$0194 d
+$0195 2
+$0196 6 OUTB $01			;add:endp 1
+$0197 1
+$0198 0
+$0199 6 OUTB $E8			;crc5
+$019A 8
+$019B e
+$019C 3 OUT4 $03			;eop
+$019D 3
+$019E 0
+$019F 6 OUTB $80			;sync
+$01A0 0
+$01A1 8
+$01A2 6 OUTB $C3			;PID=DATA0
+$01A3 3
+$01A4 c
+$01A5 6 OUTB $00			;bmRequestType 0
+$01A6 0
+$01A7 0
+$01A8 6 OUTB $09			;bmRequest 9 - set config
+$01A9 9
+$01AA 0
+$01AB 6 OUTB $01			;Desc index 1
+$01AC 1
+$01AD 0
+$01AE 6 OUTB $00			;Desc type 0
+$01AF 0
+$01B0 0
+$01B1 6 OUTB $00			;language id
+$01B2 0
+$01B3 0
+$01B4 6 OUTB $00
+$01B5 0
+$01B6 0
+$01B7 6 OUTB $00			;length 0?
+$01B8 0
+$01B9 0
+$01BA 6 OUTB $00
+$01BB 0
+$01BC 0
+$01BD 6 OUTB $27			;crc16
+$01BE 7
+$01BF 2
+$01C0 6 OUTB $25
+$01C1 5
+$01C2 2
+$01C3 3 OUT4 $03			;eop
+$01C4 3
+$01C5 0
+$01C6 7 RET
+$01C7 0 NOP
+
+$01C8 1 rcvdt: LDI $68		;receive 8 bytes of data
+$01C9 8
+$01CA 6
+$01CB 2 START
+$01CC d IN
+$01CD 0 NOP
+$01CE 0 NOP
+$01CF 0 NOP
+
+$01D0 1 rcvdt2: LDI $02
+$01D1 2
+$01D2 0
+$01D3 0 NOP
+$01D4 8 BZ $1D0 rcvdt2
+$01D5 4 
+$01D6 7
+$01D7 b DJNZ $75 rcvdt3
+$01D8 5
+$01D9 7
+$01DA 7 RET
+$01DB 0 NOP
+
+$01DC 6 in00: OUTB $80		;sync
+$01DD 0
+$01DE 8
+$01DF 6 OUTB $69
+$01E0 9
+$01E1 6
+$01E2 6 OUTB $00
+$01E3 0
+$01E4 0
+$01E5 6 OUTB $10			;crc
+$01E6 0
+$01E7 1
+$01E8 3 OUT4 $03			;eop
+$01E9 3
+$01EA 0
+$01EB 7 RET
+
+$01EC 6 in10: OUTB $80		;sync
+$01ED 0
+$01EE 8
+$01EF 6 OUTB $69
+$01F0 9
+$01F1 6
+$01F2 6 OUTB $01
+$01F3 1
+$01F4 0
+$01F5 6 OUTB $E8			;crc
+$01F6 8
+$01F7 e
+$01F8 3 OUT4 $03			;eop
+$01F9 3
+$01FA 0
+$01FB 7 RET
+
+$01FC 6 in11: OUTB $80		;sync
+$01FD 0
+$01FE 8
+$01FF 6 OUTB $69
+$0200 9
+$0201 6
+$0202 6 OUTB $81
+$0203 1
+$0204 8
+$0205 6 OUTB $58			;crc
+$0206 8
+$0207 5
+$0208 3 OUT4 $03			;eop
+$0209 3
+$020A 0
+$020B 7	RET
+
+$020C 6 send_ack: OUTB $80	;sync
+$020D 0
+$020E 8
+$020F 6 OUTB $D2
+$0210 2
+$0211 d
+$0212 3 OUT4 $03
+$0213 3
+$0214 0
+$0215 7 RET
+$0216 0 NOP
+$0217 0 NOP

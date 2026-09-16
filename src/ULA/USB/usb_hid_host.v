@@ -4,8 +4,9 @@ module USB_HID_HOST (
 	
 	input					USB_CLK,								// 12MHz clock
 	input					RESET,									// reset
-	inout					USB_Dm,
-	inout					USB_Dp,									// USB D- and D+
+
+	inout					USB_DP,									// USB D+ and D-
+	inout					USB_DN,
 
 	output reg		[ 1: 0] DEV_TYPE,								// device type. 0: no device, 1: keyboard, 2: mouse, 3: gamepad
 	output reg				REP_PULSE,								// pulse after report received from device. 
@@ -39,7 +40,7 @@ module USB_HID_HOST (
 	wire 					DATA_READY;								// data ready
 	wire 					DATA_STROBE;							// data strobe for each byte
 
-	wire 			[ 7: 0] UK_PAT;									// actual data
+	wire 			[ 7: 0] DATA_IN;								// actual data
 	reg				[ 7: 0] REGS [7];								// 0 (VID_L), 1 (VID_H), 2 (PID_L), 3 (PID_H), 4 (INTERFACE_CLASS), 5 (INTERFACE_SUBCLASS), 6 (INTERFACE_PROTOCOL)
 
 	wire					SAVE;									// save dat[b] to output register r
@@ -51,14 +52,14 @@ ukp ukp(
 	.RESET(					RESET),
 	.USB_CLK(				USB_CLK),
 	
-	.USB_Dp(				USB_Dp),
-	.USB_Dm(				USB_Dm),
+	.USB_DP_EXT(			USB_DP),
+	.USB_DN_EXT(			USB_DN),
 	
-	.USB_OE(),
+	.USB_OE_EXT(),
 
 	.DATA_READY(			DATA_READY),
 	.DATA_STROBE(			DATA_STROBE),
-	.DATA_OUT(				UK_PAT),
+	.DATA_OUT(				DATA_IN),								// Data flows OUT from ukp IN to this module
 
 	.SAVE(					SAVE),
 	.SAVE_R(				SAVE_R),
@@ -88,8 +89,9 @@ ukp ukp(
 
 	always @(posedge USB_CLK) begin : process_in_data
 	
-		DATA_READY_R				<= DATA_READY;
+		DATA_READY_R				<= DATA_READY;					// Store current value of these for edge detection
 		DATA_STROBE_R				<= DATA_STROBE;
+
 		REP_PULSE					<= 0;							// ensure pulse
 		
 		if (REP_PULSE == 1) begin
@@ -97,33 +99,29 @@ ukp ukp(
 			MOUSE_DY				<= 0;
 		end
 
-		if(~DATA_READY) begin
-			
-			REC_COUNT <= 0;
+		if (DATA_READY) begin
 		
-		end else begin
-		
-			if (DATA_STROBE && ~DATA_STROBE_R) begin				// rising edge of ukp data strobe
+			if (DATA_STROBE && ~DATA_STROBE_R) begin				// rising edge of data strobe
 
-				RSP_DATA[REC_COUNT] <= UK_PAT;
+				RSP_DATA[REC_COUNT] <= DATA_IN;
 
 				if (DEV_TYPE == 1) begin	 						// HID protocol - keyboard
 
 					case (REC_COUNT)
-						0: KEY_MOD	<= UK_PAT;						// 1st byte modifier keys (Ctrl, Shift, Alt, GUI)
+						0: KEY_MOD	<= DATA_IN;						// 1st byte modifier keys (Ctrl, Shift, Alt, GUI)
 																	// 2nd byte reserved (usually 0)
-						2: KEY_1	<= UK_PAT;						// 3rd byte key code
-						3: KEY_2	<= UK_PAT;						// 4th byte key code
-						4: KEY_3	<= UK_PAT;						// 5th byte key code
-						5: KEY_4	<= UK_PAT;						// 6th byte key code
+						2: KEY_1	<= DATA_IN;						// 3rd byte key code
+						3: KEY_2	<= DATA_IN;						// 4th byte key code
+						4: KEY_3	<= DATA_IN;						// 5th byte key code
+						5: KEY_4	<= DATA_IN;						// 6th byte key code
 					endcase
 
 				end else if (DEV_TYPE == 2) begin					// HID protocal - mouse
 	
 					case (REC_COUNT)
-						0: MOUSE_BTN <= UK_PAT;						// 1st byte mouse buttons
-						1: MOUSE_DX	 <= UK_PAT;						// 2nd byte mouse X movement
-						2: MOUSE_DY	 <= UK_PAT;						// 3rd byte mouse Y movement
+						0: MOUSE_BTN <= DATA_IN;					// 1st byte mouse buttons
+						1: MOUSE_DX	 <= DATA_IN;					// 2nd byte mouse X movement
+						2: MOUSE_DY	 <= DATA_IN;					// 3rd byte mouse Y movement
 					endcase
 	
 				end else if (DEV_TYPE == 3) begin					// HID protocol - gamepad
@@ -140,7 +138,7 @@ ukp ukp(
 					case (REC_COUNT)
 
 						0: begin
-							if (UK_PAT[1:0] != 2'b10) begin			// for DualShock2 adapter, 2'b10 marks an irrelevant record
+							if (DATA_IN[1:0] != 2'b10) begin		// for DualShock2 adapter, 2'b10 marks an irrelevant record
 								REP_VALID	<= 1;
 								GAME_LEFT	<= 0; 
 								GAME_RIGHT	<= 0; 
@@ -150,35 +148,35 @@ ukp ukp(
 								REP_VALID	<= 0;
 							end
 
-							if (UK_PAT==8'h00) { GAME_LEFT, GAME_RIGHT } <= 2'b10;
-							if (UK_PAT==8'hff) { GAME_LEFT, GAME_RIGHT } <= 2'b01;
+							if (DATA_IN==8'h00) { GAME_LEFT, GAME_RIGHT } <= 2'b10;
+							if (DATA_IN==8'hff) { GAME_LEFT, GAME_RIGHT } <= 2'b01;
 						end
 
 						1: begin
-							if (UK_PAT==8'h00) { GAME_UP, GAME_DOWN } <= 2'b10;
-							if (UK_PAT==8'hff) { GAME_UP, GAME_DOWN } <= 2'b01;
+							if (DATA_IN==8'h00) { GAME_UP, GAME_DOWN } <= 2'b10;
+							if (DATA_IN==8'hff) { GAME_UP, GAME_DOWN } <= 2'b01;
 						end
 
 						3: if (REP_VALID) begin 
-							if (UK_PAT[7:6]==2'b00) { GAME_LEFT, GAME_RIGHT } <= 2'b10;
-							if (UK_PAT[7:6]==2'b11) { GAME_LEFT, GAME_RIGHT } <= 2'b01;
+							if (DATA_IN[7:6]==2'b00) { GAME_LEFT, GAME_RIGHT } <= 2'b10;
+							if (DATA_IN[7:6]==2'b11) { GAME_LEFT, GAME_RIGHT } <= 2'b01;
 						end
 
 						4: if (REP_VALID) begin 
-							if (UK_PAT[7:6]==2'b00) { GAME_UP, GAME_DOWN } <= 2'b10;
-							if (UK_PAT[7:6]==2'b11) { GAME_UP, GAME_DOWN } <= 2'b01;
+							if (DATA_IN[7:6]==2'b00) { GAME_UP, GAME_DOWN } <= 2'b10;
+							if (DATA_IN[7:6]==2'b11) { GAME_UP, GAME_DOWN } <= 2'b01;
 						end
 
 						5: if (REP_VALID) begin
-							GAME_X 			<= UK_PAT[4];
-							GAME_A 			<= UK_PAT[5];
-							GAME_B 			<= UK_PAT[6];
-							GAME_Y 			<= UK_PAT[7];
+							GAME_X 			<= DATA_IN[4];
+							GAME_A 			<= DATA_IN[5];
+							GAME_B 			<= DATA_IN[6];
+							GAME_Y 			<= DATA_IN[7];
 						end
 
 						6: if (REP_VALID) begin
-							GAME_SEL		<= UK_PAT[4];
-							GAME_START		<= UK_PAT[5];
+							GAME_SEL		<= DATA_IN[4];
+							GAME_START		<= DATA_IN[5];
 						end
 
 					endcase
@@ -188,6 +186,11 @@ ukp ukp(
 				REC_COUNT <= REC_COUNT + 4'd1;
 
 			end
+					
+		end else begin
+
+			REC_COUNT <= 0;
+		
 		end
 
 		// falling edge of ukp data ready
@@ -207,22 +210,22 @@ ukp ukp(
 	
 			REGS[SAVE_R] <= RSP_DATA[SAVE_B];
 	
-		end else if (SAVE_DELAYED && ~SAVE && SAVE_R == 6) begin
+		end else if (SAVE_DELAYED && ~SAVE && SAVE_R == 6) begin	// falling edge of save and saved 7 bytes
 
 			// falling edge of save for bInterfaceProtocol
 
-			if (REGS[4] == 3) begin  											// bInterfaceClass.		3: HID, other: non-HID
-				if (REGS[5] == 1)												// bInterfaceSubClass.	1: Boot device
-					DEV_TYPE <= REGS[6] == 1 ? 1 : 2;							// bInterfaceProtocol.	1: keyboard, 2: mouse
+			if (REGS[4] == 3) begin  								// bInterfaceClass.		3: HID, other: non-HID
+				if (REGS[5] == 1)									// bInterfaceSubClass.	1: Boot device
+					DEV_TYPE <= REGS[6] == 1 ? 1 : 2;				// bInterfaceProtocol.	1: keyboard, 2: mouse
 				else
-					DEV_TYPE <= 3;												// gamepad
+					DEV_TYPE <= 3;									// gamepad
 			end else
 				DEV_TYPE <= 0;
 		end
 
 		CONNECTED_R <= CONNECTED;
 
-		if (~CONNECTED & CONNECTED_R) DEV_TYPE <= 0;							// clear device type on disconnect
+		if (~CONNECTED & CONNECTED_R) DEV_TYPE <= 0;				// clear device type on disconnect
 	end
 
 endmodule

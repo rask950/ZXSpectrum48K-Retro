@@ -30,8 +30,8 @@ assign USB_GAME[15:10] = 6'b0;
 USB_HID_HOST ZUSB (
 
 	.USB_CLK(		USB_CLK),					// 12MHz clock
-	.USB_Dm(		USB_DN),
-	.USB_Dp(		USB_DP),					// USB D- and D+
+	.USB_DN(		USB_DN),
+	.USB_DP(		USB_DP),					// USB D- and D+
     .RESET(         sys_resetn),
 
 	.DEV_TYPE(		USB_TYP),					// device type. 0: no device, 1: keyboard, 2: mouse, 3: gamepad

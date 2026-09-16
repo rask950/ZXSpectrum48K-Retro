@@ -19,9 +19,7 @@ module ZX_Spectrum_SD (
 	input			SD_DAT0,
 	output			SD_DAT1,
 	output			SD_DAT2,
-	output			SD_DAT3,
-
-	output		[1:0]led
+	output			SD_DAT3
 );
 
 parameter  IO_PORT				= 3'd1;									// IO port BIT NUMBER (0-7)
@@ -155,8 +153,6 @@ wire   SD_RD_BIT = SD_OUT_EN ? 1'b1		  : SD_CMD;			    		// Read command bit
 wire   SD_RD_DAT = SD_OUT_EN ? 1'b1		  : SD_DAT0;					// Read data bit
 
 assign CPU_RD_DATA = (IO_SEL | CPU_RD) ? 8'bz : { BUSY, STATUS };		// CPU read status
-
-assign led = ~{ BUSY, STATUS[0]};
 
 ///////////////////////////////////////////////////////////////////////////
 // Clock generator
