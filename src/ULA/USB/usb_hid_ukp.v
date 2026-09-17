@@ -11,7 +11,6 @@ module ukp(
 
     output reg 			DATA_READY, 				// data frame is outputing
     output 				DATA_STROBE,				// strobe for a byte within the frame
-
     output reg 	[ 7: 0] DATA_OUT,					// output data when DATA_STROBE=1
 
     output reg			SAVE,						// save: regs[save_r] <= dat[save_b]
@@ -51,41 +50,44 @@ module ukp(
     localparam			I_WAIT		= 4'hE;
     localparam			I_JMP		= 4'hF;
 
-    wire		[ 3: 0]	INST;
-    reg			[ 3: 0] INST_H;
+    wire		[ 3: 0]	INST;						// Current instruction AND PARAMETER from ROM
+    reg			[ 3: 0] INST_H;						// Stored instruction from ROM
+    reg 				INST_READY	= 0;			// Instruction from ROM is ready
 
-    wire 				SAMPLE;						// 1: an IN sample is available
-
-    reg 				INST_READY	= 0;
-    reg 				USB_OUT_P	= 0;
+    reg 				USB_OUT_P	= 0;			// USB data output and input
     reg 				USB_OUT_N	= 0;
-    reg					COND		= 0;
-    reg					NAK			= 0;
-    reg					USB_IN_NS	= 0;
+    reg					USB_IN_P; 
+	reg					USB_IN_N; 
+	reg					USB_IN_NS	= 0;
+    reg					USB_IN_ND;
 
-    reg                 OE          = 0;    		// OE=1: output enabled, 0: hi-Z
-    reg                 OE_W        = 0;
-    reg					NRZON		= 0;
+    wire 				SAMPLE;						// IN sample is available
+
+    reg					NAK			= 0;			// NAK signal for USB communication
+    reg					NAKD;						// NAK delay
+
+    reg                 OE          = 0;    		// Output enable
 
     reg					BANK		= 0;
     reg					RECORD1		= 0;
 
-    reg					MBIT        = 0;			// 1: out4/outb is transmitting
+    reg					MBIT        = 0;			// OUT4/OUTB is transmitting
     
-	reg			[ 3: 0] STATE       = 0;
-    reg			[ 3: 0] STATED;
+	reg			[ 3: 0] STATE       = 0;			// State machine current state
+    reg			[ 3: 0] STATED;						// Delayed state
 
     reg			[ 7: 0] WK          = 0;		    // W register
-    reg			[ 7: 0] SB          = 0;		    // out value byte being written
-    reg			[ 2: 0] SADR;						// out4/outb write ptr
+    reg			[ 7: 0] OUT_BYTE    = 0;		    // Out value byte being written
+    reg			[ 2: 0] OUT_IND;					// Index in above of current bit being written
     
-	reg         [13: 0] PC          = 0;
-    reg         [13: 0] NEXT_PC;					// program counter, next pc
+	reg         [13: 0] PC          = 0;			// program counter, next pc
+    reg         [13: 0] NEXT_PC;
 
     reg			[ 2: 0] TIMING		= 0;			// T register (0~7)
     
-	reg			[ 3: 0] LB4			= 0;
+	reg			[ 3: 0] LB4			= 0;			// Jump/branch address stores
     reg			[ 3: 0] LB4W;
+    reg					COND		= 0;			// Branch condition state
 
     reg			[13: 0] INTERVAL	= 0;
 
@@ -94,33 +96,30 @@ module ukp(
 
     reg			[ 2: 0] NRZI_TX_CNT;				// NRZI trans/recv count for bit stuffing
 	reg			[ 2: 0] NRZI_RX_CNT;
+    reg					NRZON		= 0;
 
-    wire				INTERVAL_CY = INTERVAL == 12001;									// Interval counter has reached its maximum value
+    wire				INTERVAL_CY = INTERVAL == 12001;			// Interval counter has reached its maximum value
 
     wire 				NEXT 		=  ~(STATE == S_OPCODE &
-										(INST  == I_START & USB_IN_N |						// start
-										(INST  == I_OUT0 || INST == I_HIZ) & TIMING  != 0 |	// out0/hiz
-										 INST  == I_IN	  & (~SAMPLE | (USB_IN_P | USB_IN_N) & WK != 1) |	// in 
-										 INST  == I_WAIT  & ~INTERVAL_CY)					// wait
-									);
+											(INST  == I_START & USB_IN_N |										// start
+											(INST  == I_OUT0 || INST == I_HIZ) & TIMING != 0 |					// out0/hiz
+											 INST  == I_IN	  & (~SAMPLE | (USB_IN_P | USB_IN_N) & WK != 1) |	// in 
+											 INST  == I_WAIT  & ~INTERVAL_CY)									// wait
+										);
 
     wire				BRANCH		= STATE == S_B1 & COND;									// Branch condition met
-    wire 				RETPC		= STATE == S_OPCODE && INST == I_RET ? 1 : 0;			// Return from subroutine
-    wire 				JMPPC		= STATE == S_OPCODE && INST == I_JMP ? 1 : 0;			// Jump to subroutine
+    wire 				RETPC		= STATE == S_OPCODE && INST == I_RET;					// Return from subroutine
+    wire 				JMPPC		= STATE == S_OPCODE && INST == I_JMP;					// Jump to subroutine
 
-    wire				DBIT		= SB[ 7 - SADR[2:0] ];			// The bit to be transmitted from the output byte
+    wire				OUT_BIT		= OUT_BYTE[ 7 - OUT_IND ];								// The bit to be transmitted from the output byte
 
     wire				RECORD;
 
-    reg					USB_IN_ND;
-    reg			[23: 0] CONCT;
+    reg					DATA_READY_D;						// Delayed version for edge detection
 
-    reg					USB_IN_P; 
-	reg					USB_IN_N; 
-    reg					DATA_READY_D;
-    reg					NAKD;
+    reg			[23: 0] CONCT;								// Connection counter for error detection
 
-    assign				CON_ERROR = CONCT[23] || ~RESET;
+    assign				CON_ERROR = CONCT[23] || ~RESET;	// Connection error indicator
 
 USB_HID_HOST_ROM 	UKPROM(
 	.CLK(				USB_CLK), 
@@ -171,12 +170,12 @@ USB_HID_HOST_ROM 	UKPROM(
 						end
 
 						I_OUT4: begin											// 3 - Output 4 bits
-							SADR	    <= 3;
+							OUT_IND	    <= 3;
 							STATE       <= S_S0;
 						end
 
 						I_OUTB: begin											// 6 - Output byte
-							SADR		<= 7;
+							OUT_IND		<= 7;
 							STATE		<= S_S0;
 						end
 
@@ -251,14 +250,14 @@ USB_HID_HOST_ROM 	UKPROM(
                     
 
                     S_S0: begin													// OutputB/4 collects low nibble
-						SB[3:0]		<= INST;
-						STATE		<= S_S1;
+						OUT_BYTE[3:0]	<= INST;
+						STATE			<= S_S1;
 					end
 
                     S_S1: begin													// OutputB/4 collects high nibble even though OUT4 only uses low nibble
-						SB[7:4]		<= INST;
-						STATE		<= S_S2;
-						MBIT		<= 1;										// Indicates bit transmission
+						OUT_BYTE[7:4]	<= INST;
+						STATE			<= S_S2;
+						MBIT			<= 1;									// Indicates bit transmission
 					end
 
 
@@ -306,52 +305,54 @@ USB_HID_HOST_ROM 	UKPROM(
 
 			end else begin
 			
-				INST_READY 			<= 1;
+				INST_READY 				<= 1;
 
 			end
 
             // bit transmission (out4/outb)
             if (MBIT == 1 && TIMING == 0) begin
 
-                if (OE == 0)
+                if (OE == 0) begin												// If output NOT enabled, clear TX counter
 					NRZI_TX_CNT		<= 0;
-                else
-                    if (DBIT)
+                end else begin
+                    if (OUT_BIT) begin											// If output bit is 1 (no transition) incremement count
 						NRZI_TX_CNT <= NRZI_TX_CNT + 3'd1;
-                    else
+                    end else begin
 					    NRZI_TX_CNT <= 0;
+                    end
+                end
 
-				if (INST_H == I_OUTB) begin
+				if (INST_H == I_OUTB) begin										// OUTB
 
-					if (NRZI_TX_CNT != 6) begin
+					if (NRZI_TX_CNT != 6) begin									// No but stuffing needed encode the next bit
 					
-						USB_OUT_P	<= DBIT ?  USB_OUT_P : ~USB_OUT_P;
-						USB_OUT_N	<= DBIT ? ~USB_OUT_P :  USB_OUT_P;
+						USB_OUT_P	<= OUT_BIT ?  USB_OUT_P : ~USB_OUT_P;
+						USB_OUT_N	<= OUT_BIT ? ~USB_OUT_P :  USB_OUT_P;
 					
 					end	else begin
 
-						USB_OUT_P	<= ~USB_OUT_P;
+						USB_OUT_P	<= ~USB_OUT_P;								// Bit stuffing - force a transition
 						USB_OUT_N	<=  USB_OUT_P;
 
-						NRZI_TX_CNT <= 0;
+						NRZI_TX_CNT <= 0;										// Reset the counter
 
 					end
 
-				end else begin
+				end else begin													// OUT4 only used for EOP
 
-					USB_OUT_P		<= SB[{1'b1, SADR[1:0]}];
-					USB_OUT_N		<= SB[		 SADR[2:0] ];
+					USB_OUT_P		<= OUT_BYTE[ {1'b1, OUT_IND[1:0]} ];		// This is 7, 6, 5, 4 - 0000
+					USB_OUT_N		<= OUT_BYTE[ 		OUT_IND ];				// This is 3, 2, 1, 0 - 0011
 
 				end
 
-                OE <= 1'b1; 
+                OE <= 1'b1; 													// Now enable the bit to be output
 
-                if (NRZI_TX_CNT != 6)
-					SADR 			<= SADR - 3'd1;
+                if (NRZI_TX_CNT != 6)											// Move on to the next bit unless stuffed
+					OUT_IND 		<= OUT_IND - 3'd1;
 
-                if (SADR == 0) begin
-					MBIT			<= 0;
-					STATE			<= S_OPCODE;
+                if (OUT_IND == 0) begin											// All bits transmitted
+					MBIT			<= 0;										// Turn off transmission
+					STATE			<= S_OPCODE;								// Collect next opcode
 				end
 
             end
@@ -441,15 +442,21 @@ USB_HID_HOST_ROM 	UKPROM(
         end
     end
 
-    assign USB_P_EXT	= OE ? USB_OUT_P : 1'bZ;
+    assign USB_P_EXT	= OE ? USB_OUT_P : 1'bZ;					// Tri-state control for USB data
     assign USB_N_EXT	= OE ? USB_OUT_N : 1'bZ;
 
-    assign USB_OE_EXT	= OE;
+    assign USB_OE_EXT	= OE;										// Output enable for USB data lines
 
-    assign SAMPLE		= INST_READY & STATE == S_OPCODE & INST == I_IN & TIMING == 4; // IN
+    assign SAMPLE		= INST_READY &								// Sample condition for IN instruction
+						  STATE == S_OPCODE &
+						  INST == I_IN &
+						  TIMING == 4;
 
-    assign RECORD 		= CONNECTED & ~NAK;
+    assign RECORD 		= CONNECTED & ~NAK;							// Record condition: connected and not NAK
 
-    assign DATA_STROBE	= ~NRZON & DATA_READY & (BITADR[2:0] == 3'b100) & (TIMING == 2);
+    assign DATA_STROBE	=  ~NRZON & 								// Data strobe condition
+							DATA_READY & 
+							BITADR[2:0] == 3'b100 &
+							TIMING == 2;
 
 endmodule

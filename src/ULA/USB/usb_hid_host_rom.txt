@@ -220,16 +220,16 @@ $00CE 0
 $00CF 0 NOP
 
 $00D0 4 reset: OUT0			;USB bus reset
-$00D1 1 LDI $0A
+$00D1 1 LDI $0A				;D+ abd D- are held low for 10ms
 $00D2 a
 $00D3 0
 
-$00D4 e busrstlp: WAIT		;wait 10ms
+$00D4 e busrstlp: WAIT		;wait 1ms
 $00D5 b DJNZ $D4 busrstlp
 $00D6 5
 $00D7 3
-$00D8 5 HIZ
-$00D9 1 LDI $28
+$00D8 5 HIZ					;Then returned to Z
+$00D9 1 LDI $28				;Now a 40ms delay
 $00DA 8 
 $00DB 2 
 
