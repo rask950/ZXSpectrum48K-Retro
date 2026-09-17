@@ -70,15 +70,11 @@ module ukp(
 
     reg					BANK		= 0;
     reg					RECORD1		= 0;
-
-    reg					MBIT        = 0;			// OUT4/OUTB is transmitting
     
 	reg			[ 3: 0] STATE       = 0;			// State machine current state
     reg			[ 3: 0] STATED;						// Delayed state
 
     reg			[ 7: 0] WK          = 0;		    // W register
-    reg			[ 7: 0] OUT_BYTE    = 0;		    // Out value byte being written
-    reg			[ 2: 0] OUT_IND;					// Index in above of current bit being written
     
 	reg         [13: 0] PC          = 0;			// program counter, next pc
     reg         [13: 0] NEXT_PC;
@@ -94,10 +90,6 @@ module ukp(
     reg			[ 6: 0] BITADR		= 0;			// 0~127
     reg			[ 7: 0] DATA = 0;					// received data
 
-    reg			[ 2: 0] NRZI_TX_CNT;				// NRZI trans/recv count for bit stuffing
-	reg			[ 2: 0] NRZI_RX_CNT;
-    reg					NRZON		= 0;
-
     wire				INTERVAL_CY = INTERVAL == 12001;			// Interval counter has reached its maximum value
 
     wire 				NEXT 		=  ~(STATE == S_OPCODE &
@@ -111,15 +103,22 @@ module ukp(
     wire 				RETPC		= STATE == S_OPCODE && INST == I_RET;					// Return from subroutine
     wire 				JMPPC		= STATE == S_OPCODE && INST == I_JMP;					// Jump to subroutine
 
-    wire				OUT_BIT		= OUT_BYTE[ 7 - OUT_IND ];								// The bit to be transmitted from the output byte
+    reg			[ 7: 0] OUT_BYTE    = 0;		    				// Output byte being written
+    reg			[ 2: 0] OUT_IND;									// Index in above of current bit being written
+    wire				OUT_BIT		= OUT_BYTE[ 7 - OUT_IND ];		// The bit to be transmitted from the output byte
+    reg					OUT_TX      = 0;							// OUT4/OUTB is transmitting
+
+    reg			[ 2: 0] NRZI_TX_CNT;								// NRZI trans/recv count for bit stuffing
+	reg			[ 2: 0] NRZI_RX_CNT;
+    reg					NRZON		= 0;
 
     wire				RECORD;
 
-    reg					DATA_READY_D;						// Delayed version for edge detection
+    reg					DATA_READY_D;								// Delayed version for edge detection
 
-    reg			[23: 0] CONCT;								// Connection counter for error detection
+    reg			[23: 0] CONCT;										// Connection counter for error detection
 
-    assign				CON_ERROR = CONCT[23] || ~RESET;	// Connection error indicator
+    assign				CON_ERROR = CONCT[23] || ~RESET;			// Connection error indicator
 
 USB_HID_HOST_ROM 	UKPROM(
 	.CLK(				USB_CLK), 
@@ -137,7 +136,7 @@ USB_HID_HOST_ROM 	UKPROM(
 			INST_READY				<= 0;
 			STATE					<= S_OPCODE;
 			TIMING					<= 0; 
-            MBIT					<= 0;
+            OUT_TX					<= 0;
 			BITADR					<= 0;
 			NAK						<= 1;
 			OE						<= 0;
@@ -257,7 +256,7 @@ USB_HID_HOST_ROM 	UKPROM(
                     S_S1: begin													// OutputB/4 collects high nibble even though OUT4 only uses low nibble
 						OUT_BYTE[7:4]	<= INST;
 						STATE			<= S_S2;
-						MBIT			<= 1;									// Indicates bit transmission
+						OUT_TX			<= 1;									// Indicates bit transmission
 					end
 
 
@@ -282,35 +281,36 @@ USB_HID_HOST_ROM 	UKPROM(
 				endcase
 
                 // pc control
-                if (MBIT == 0) begin 											// If NOT transmitting
+                if (OUT_TX == 0) begin 											// If NOT transmitting
 					
                     if (JMPPC) NEXT_PC	<= PC + 14'd4;							// JMP is actually CALL and this is the return address
                     
 					if (NEXT | BRANCH | RETPC) begin
 
-                        if (RETPC)
+                        if (RETPC) begin
 							PC 			<= NEXT_PC;								// RETurn from JMP
-						else
-							if (BRANCH)
-	                            if (INST_H == I_JMP)							// jmp
+						end else
+							if (BRANCH) begin
+	                            if (INST_H == I_JMP) begin						// jmp
 	                                PC	<= { INST, LB4, LB4W, 2'b00 };			// 3 nibbles (INST, LB4, LB4W) * 4
-	                            else											// branch
+								end else begin									// branch
 	                                PC	<= { 4'b0000, INST, LB4, 2'b00 };		// 2 nibbles (0000, INST, LB4) * 4
-	                        else
+								end
+							end else begin
 								PC		<= PC + 14'd1;							// next PC
-                        
+							end
+						end
+						
 						INST_READY		<= 0;									// Wait 1 cycle for the next instruction
                     end
                 end
 
 			end else begin
-			
 				INST_READY 				<= 1;
-
 			end
 
             // bit transmission (out4/outb)
-            if (MBIT == 1 && TIMING == 0) begin
+            if (OUT_TX == 1 && TIMING == 0) begin
 
                 if (OE == 0) begin												// If output NOT enabled, clear TX counter
 					NRZI_TX_CNT		<= 0;
@@ -351,7 +351,7 @@ USB_HID_HOST_ROM 	UKPROM(
 					OUT_IND 		<= OUT_IND - 3'd1;
 
                 if (OUT_IND == 0) begin											// All bits transmitted
-					MBIT			<= 0;										// Turn off transmission
+					OUT_TX			<= 0;										// Turn off transmission
 					STATE			<= S_OPCODE;								// Collect next opcode
 				end
 
@@ -391,9 +391,7 @@ USB_HID_HOST_ROM 	UKPROM(
 					NRZON			<= 0;
 
 				end else begin
-
 					NRZON			<= 1;
-
 				end
 
                 USB_IN_NS			<= USB_IN_N;
@@ -403,7 +401,7 @@ USB_HID_HOST_ROM 	UKPROM(
                 else
 				    NRZI_RX_CNT		<= 0;
 
-                if (~USB_IN_N && ~USB_IN_P) DATA_READY <= 0;      			// SE0: packet is finished. Mouses send length 4 reports.
+                if (~USB_IN_N && ~USB_IN_P) DATA_READY <= 0;      	// SE0: packet is finished. Mouses send length 4 reports.
             end
 
             if (OE == 0) begin
@@ -415,7 +413,7 @@ USB_HID_HOST_ROM 	UKPROM(
 
             // Timing
             INTERVAL				<=	INTERVAL_CY ? 14'd0 :
-										INTERVAL	+ 14'd1;
+													  INTERVAL + 14'd1;
 
             RECORD1					<= RECORD;
             if (~RECORD & RECORD1) BANK <= ~BANK;
