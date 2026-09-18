@@ -7,14 +7,14 @@ $0001 9
 $0002 0	
 $0003 0	NOP
 
-$0004 e	cstart2: WAIT
-$0005 9	BC $A8 connected
+$0004 e	cstart2: WAIT					;Wait 1ms
+$0005 9	BC $A8 connected				;Branch if connected
 $0006 a	
 $0007 2	
-$0008 8	BZ $00 cstart
+$0008 8	BZ $00 cstart					;Branch to start if no device ?	
 $0009 0	
 $000A 0	
-$000B 1	LDI $C8 (200)
+$000B 1	LDI $C8 (200)					;Wait 200ms
 $000C 8	
 $000D c	
 $000E 0	NOP
@@ -24,16 +24,16 @@ $0010 e	w200ms: WAIT
 $0011 b	DJNZ $10 w200ms
 $0012 4	
 $0013 0	
-$0014 f	JMP $0D0 reset
+$0014 f	JMP $0D0 reset					;Reset USB
 $0015 4
 $0016 3
 $0017 0
-$0018 f JMP $120 getconfig
+$0018 f JMP $120 getconfig				;Get device config
 $0019 8
 $001A 4
 $001B 0
-$001C 5 HIZ
-$001D f JMP $1C8 rcvdt
+$001C 5 HIZ								;OE inactive
+$001D f JMP $1C8 rcvdt					;Receive 8 bytes
 $001E 2
 $001F 7
 $0020 0
@@ -41,7 +41,7 @@ $0021 0 NOP
 $0022 0 NOP
 $0023 0 NOP
 
-$0024 f wait_config: JMP $1DC in00
+$0024 f wait_config: JMP $1DC in00		;
 $0025 7
 $0026 7
 $0027 0
@@ -420,10 +420,10 @@ $018F 0 NOP
 $0190 6 setconfig1: OUTB $80 	;sync - set config of dev 1 to default (1)
 $0191 0
 $0192 8
-$0193 6 OUTB $2D			;PID
+$0193 6 OUTB $2D			;PID (SETUP)
 $0194 d
-$0195 2
-$0196 6 OUTB $01			;add:endp 1
+$0195 2						;--addr-- endp- -crc--
+$0196 6 OUTB $01			;0000 000-1 111-0 1000
 $0197 1
 $0198 0
 $0199 6 OUTB $E8			;crc5
@@ -477,20 +477,20 @@ $01C7 0 NOP
 $01C8 1 rcvdt: LDI $68		;receive 8 bytes of data
 $01C9 8
 $01CA 6
-$01CB 2 START
-$01CC d IN
+$01CB 2 START				;Initiate transfer
+$01CC d IN					;IN is repeated until 104 bits received
 $01CD 0 NOP
 $01CE 0 NOP
 $01CF 0 NOP
 
-$01D0 1 rcvdt2: LDI $02
+$01D0 1 rcvdt2: LDI $02		;Now wait while USB_IN_N is zero
 $01D1 2
 $01D2 0
 $01D3 0 NOP
-$01D4 8 BZ $1D0 rcvdt2
+$01D4 8 rcvdt3: BZ $1D0 rcvdt2
 $01D5 4 
 $01D6 7
-$01D7 b DJNZ $75 rcvdt3
+$01D7 b DJNZ $1D4 rcvdt3	;Check its not zero once more
 $01D8 5
 $01D9 7
 $01DA 7 RET
@@ -499,10 +499,10 @@ $01DB 0 NOP
 $01DC 6 in00: OUTB $80		;sync
 $01DD 0
 $01DE 8
-$01DF 6 OUTB $69
+$01DF 6 OUTB $69			;PID (IN address for device to host transfer)
 $01E0 9
-$01E1 6
-$01E2 6 OUTB $00
+$01E1 6						;--addr-- endp- -crc--
+$01E2 6 OUTB $00			;0000 000-0 000-1 0000
 $01E3 0
 $01E4 0
 $01E5 6 OUTB $10			;crc
@@ -516,10 +516,10 @@ $01EB 7 RET
 $01EC 6 in10: OUTB $80		;sync
 $01ED 0
 $01EE 8
-$01EF 6 OUTB $69
+$01EF 6 OUTB $69			;PID (IN address for device to host transfer)
 $01F0 9
-$01F1 6
-$01F2 6 OUTB $01
+$01F1 6						;--addr-- endp- -crc--				
+$01F2 6 OUTB $01			;0000 000-1 111-0 1000
 $01F3 1
 $01F4 0
 $01F5 6 OUTB $E8			;crc
@@ -533,10 +533,10 @@ $01FB 7 RET
 $01FC 6 in11: OUTB $80		;sync
 $01FD 0
 $01FE 8
-$01FF 6 OUTB $69
+$01FF 6 OUTB $69			;PID (IN address for device to host transfer)
 $0200 9
-$0201 6
-$0202 6 OUTB $81
+$0201 6						;--addr-- endp- -crc--
+$0202 6 OUTB $81			;1000 000-1 010-1 1000 
 $0203 1
 $0204 8
 $0205 6 OUTB $58			;crc
@@ -550,10 +550,10 @@ $020B 7	RET
 $020C 6 send_ack: OUTB $80	;sync
 $020D 0
 $020E 8
-$020F 6 OUTB $D2
+$020F 6 OUTB $D2			;PIC (ack)
 $0210 2
 $0211 d
-$0212 3 OUT4 $03
+$0212 3 OUT4 $03			;EOP
 $0213 3
 $0214 0
 $0215 7 RET
