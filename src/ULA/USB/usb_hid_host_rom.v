@@ -1,9 +1,13 @@
-module usb_hid_host_rom(clk, adr, data);
-    input clk;
-    input [13:0] adr;
-    output [3:0] data;
-    reg [3:0] data; 
-    reg [3:0] mem [0:535];
-    initial $readmemh("usb_hid_host_rom.hex", mem);
-    always @(posedge clk) data <= mem[adr];
+module USB_HID_HOST_ROM(
+
+    input					CLK,
+    input 			[13: 0] ADDRESS,
+    output reg		[ 3: 0] DATA
+);
+    reg 			[ 3: 0] MEMORY [0:535];
+
+    initial $readmemh("usb_hid_host_rom.hex", MEMORY);
+
+    always @(posedge CLK) DATA <= MEMORY[ADDRESS];
+
 endmodule
