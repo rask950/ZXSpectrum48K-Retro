@@ -1609,7 +1609,7 @@ assign CPU_DATA[5] = oen ? tb_b5 : 1'bz;
 assign CPU_DATA[6] = oen ? tb_b6 : 1'bz;
 assign CPU_DATA[7] = oen ? tb_b7 : 1'bz;
 
-`include "48K ROM Image.v"
+//`include "48K ROM Image.v"
 
 //`include "Hobbit Image.v"
 
