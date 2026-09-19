@@ -2,8 +2,7 @@ module ZX_Spectrum_SD (
 	input			CLK_28,
 	input			RESET,
 	
-	input			[ 7: 0]	CPU_WR_DATA,								// CPU Buses
-	output			[ 7: 0]	CPU_RD_DATA,
+	inout			[ 7: 0]	CPU_DATA_BUS,								// CPU Buses
 	input			[15: 0] CPU_ADDRESS,
 	input					CPU_IORQ,
 	input					CPU_RD,
@@ -151,7 +150,7 @@ assign		SD_CMD	 	= SD_OUT_EN ? SD_BIT_OUT  : 1'bz;				// Write command bit
 wire		SD_RD_BIT	= SD_OUT_EN ? 1'b1		  : SD_CMD;				// Read command bit
 wire		SD_RD_DAT	= SD_OUT_EN ? 1'b1		  : SD_DAT0;			// Read data bit
 
-assign		CPU_RD_DATA = IO_SEL | CPU_RD ?  8'bz : { BUSY, STATUS };	// CPU read status
+assign		CPU_DATA_BUS = IO_SEL | CPU_RD ?  8'bz : { BUSY, STATUS };	// CPU read status
 
 ///////////////////////////////////////////////////////////////////////////
 // Clock generator/IO port writer
@@ -170,23 +169,23 @@ always @(posedge CLK_28) begin
 			case(IO_REG)
 
 			4'hF: begin													// FFFD - 65531
-				CMD_CODE	<= CPU_WR_DATA[5:0];						// NB Writing the command code kicks off the state machine
+				CMD_CODE	<= CPU_DATA_BUS[5:0];						// NB Writing the command code kicks off the state machine
 			end															// So the CPU must write the IO ports in reverse order
 
 			4'hB: begin													// FBFD - 65277
-				CMD_ARG[0]	<= CPU_WR_DATA;								// Write to each of the 4 byte arguments
+				CMD_ARG[0]	<= CPU_DATA_BUS;							// Write to each of the 4 byte arguments
 			end
 
 			4'hC: begin													// FCFD - 65021
-				CMD_ARG[1]	<= CPU_WR_DATA;
+				CMD_ARG[1]	<= CPU_DATA_BUS;
 			end
 
 			4'hD: begin													// FDFD - 64765
-				CMD_ARG[2]	<= CPU_WR_DATA;
+				CMD_ARG[2]	<= CPU_DATA_BUS;
 			end
 
 			4'hE: begin													// FEFD - 64509
-				CMD_ARG[3]	<= CPU_WR_DATA;
+				CMD_ARG[3]	<= CPU_DATA_BUS;
 			end
 
 			endcase

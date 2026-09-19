@@ -22,8 +22,7 @@ module ZX_Spectrum_MEM(
     input [15:0]SD_ADDRESS,
     input       SD_WR,
 
-    output [7:0]CPU_RD_DATA,
-    input [ 7:0]CPU_WR_DATA,
+    inout [ 7:0]CPU_DATA,
     input [15:0]CPU_ADDRESS,
     input       CPU_RD,
     input       CPU_WR,
@@ -96,7 +95,7 @@ DPB p0_b0 (
     .WREB(wreb0),				// When paged in it's writable
     .BLKSELB({ 1'b0, PAGING[6] ^ CPU_ADDRESS[15], CPU_ADDRESS[14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[0]}),
+    .DIB({15'b0,CPU_DATA[0]}),
     .DOB({p0_b0_cpu_w,p0_b0_cpu})
 );
 
@@ -129,7 +128,7 @@ DPB p0_b1 (
     .WREB(wreb0),
     .BLKSELB({ 1'b0, PAGING[6] ^ CPU_ADDRESS[15], CPU_ADDRESS[14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[1]}),
+    .DIB({15'b0, CPU_DATA[1]}),
     .DOB({p0_b1_cpu_w,p0_b1_cpu})
 );
 
@@ -162,7 +161,7 @@ DPB p0_b2 (
     .WREB(wreb0),
     .BLKSELB({ 1'b0, PAGING[6] ^ CPU_ADDRESS[15], CPU_ADDRESS[14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[2]}),
+    .DIB({15'b0, CPU_DATA[2]}),
     .DOB({p0_b2_cpu_w,p0_b2_cpu})
 );
 
@@ -195,7 +194,7 @@ DPB p0_b3 (
     .WREB(wreb0),
     .BLKSELB({ 1'b0, PAGING[6] ^ CPU_ADDRESS[15], CPU_ADDRESS[14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[3]}),
+    .DIB({15'b0, CPU_DATA[3]}),
     .DOB({p0_b3_cpu_w,p0_b3_cpu})
 );
 
@@ -228,7 +227,7 @@ DPB p0_b4 (
     .WREB(wreb0),
     .BLKSELB({ 1'b0, PAGING[6] ^ CPU_ADDRESS[15], CPU_ADDRESS[14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[4]}),
+    .DIB({15'b0, CPU_DATA[4]}),
     .DOB({p0_b4_cpu_w,p0_b4_cpu})
 );
 
@@ -261,7 +260,7 @@ DPB p0_b5 (
     .WREB(wreb0),
     .BLKSELB({ 1'b0, PAGING[6] ^ CPU_ADDRESS[15], CPU_ADDRESS[14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[5]}),
+    .DIB({15'b0, CPU_DATA[5]}),
     .DOB({p0_b5_cpu_w,p0_b5_cpu})
 );
 
@@ -294,7 +293,7 @@ DPB p0_b6 (
     .WREB(wreb0),
     .BLKSELB({ 1'b0, PAGING[6] ^ CPU_ADDRESS[15], CPU_ADDRESS[14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[6]}),
+    .DIB({15'b0, CPU_DATA[6]}),
     .DOB({p0_b6_cpu_w,p0_b6_cpu})
 );
 
@@ -327,7 +326,7 @@ DPB p0_b7 (
     .WREB(wreb0),
     .BLKSELB({ 1'b0, PAGING[6] ^ CPU_ADDRESS[15], CPU_ADDRESS[14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[7]}),
+    .DIB({15'b0, CPU_DATA[7]}),
     .DOB({p0_b7_cpu_w,p0_b7_cpu})
 );
 
@@ -396,7 +395,7 @@ DPB p1_b0 (
     .WREB(wreb),
     .BLKSELB({ 1'b0, CPU_ADDRESS[15:14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[0]}),
+    .DIB({15'b0,CPU_DATA[0]}),
     .DOB({p1_b0_cpu_w, p1_b0_cpu})
 );
 
@@ -429,7 +428,7 @@ DPB p1_b1 (
     .WREB(wreb),
     .BLKSELB({ 1'b0, CPU_ADDRESS[15:14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[1]}),
+    .DIB({15'b0,CPU_DATA[1]}),
     .DOB({p1_b1_cpu_w,p1_b1_cpu})
 );
 
@@ -462,7 +461,7 @@ DPB p1_b2 (
     .WREB(wreb),
     .BLKSELB({ 1'b0, CPU_ADDRESS[15:14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[2]}),
+    .DIB({15'b0,CPU_DATA[2]}),
     .DOB({p1_b2_cpu_w,p1_b2_cpu})
 );
 
@@ -495,7 +494,7 @@ DPB p1_b3 (
     .WREB(wreb),
     .BLKSELB({ 1'b0, CPU_ADDRESS[15:14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[3]}),
+    .DIB({15'b0,CPU_DATA[3]}),
     .DOB({p1_b3_cpu_w,p1_b3_cpu})
 );
 
@@ -528,7 +527,7 @@ DPB p1_b4 (
     .WREB(wreb),
     .BLKSELB({ 1'b0, CPU_ADDRESS[15:14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[4]}),
+    .DIB({15'b0,CPU_DATA[4]}),
     .DOB({p1_b4_cpu_w,p1_b4_cpu})
 );
 
@@ -561,7 +560,7 @@ DPB p1_b5 (
     .WREB(wreb),
     .BLKSELB({ 1'b0, CPU_ADDRESS[15:14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[5]}),
+    .DIB({15'b0,CPU_DATA[5]}),
     .DOB({p1_b5_cpu_w,p1_b5_cpu})
 );
 
@@ -594,7 +593,7 @@ DPB p1_b6 (
     .WREB(wreb),
     .BLKSELB({ 1'b0, CPU_ADDRESS[15:14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[6]}),
+    .DIB({15'b0,CPU_DATA[6]}),
     .DOB({p1_b6_cpu_w,p1_b6_cpu})
 );
 
@@ -627,7 +626,7 @@ DPB p1_b7 (
     .WREB(wreb),
     .BLKSELB({ 1'b0, CPU_ADDRESS[15:14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[7]}),
+    .DIB({15'b0,CPU_DATA[7]}),
     .DOB({p1_b7_cpu_w,p1_b7_cpu})
 );
 
@@ -688,7 +687,7 @@ DPB p2_b0 (
     .WREB(wreb2),
     .BLKSELB({ 1'b0, CPU_ADDRESS[15:14] }),	// Don't select if paged out
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[0]}),
+    .DIB({15'b0,CPU_DATA[0]}),
     .DOB({p2_b0_cpu_w,p2_b0_cpu})
 );
 
@@ -721,7 +720,7 @@ DPB p2_b1 (
     .WREB(wreb2),
     .BLKSELB({ 1'b0, CPU_ADDRESS[15:14] }),
 	.ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[1]}),
+    .DIB({15'b0,CPU_DATA[1]}),
     .DOB({p2_b1_cpu_w,p2_b1_cpu})
 );
 
@@ -754,7 +753,7 @@ DPB p2_b2 (
     .WREB(wreb2),
     .BLKSELB({ 1'b0, CPU_ADDRESS[15:14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[2]}),
+    .DIB({15'b0,CPU_DATA[2]}),
     .DOB({p2_b2_cpu_w,p2_b2_cpu})
 );
 
@@ -787,7 +786,7 @@ DPB p2_b3 (
     .WREB(wreb2),
     .BLKSELB({ 1'b0, CPU_ADDRESS[15:14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[3]}),
+    .DIB({15'b0,CPU_DATA[3]}),
     .DOB({p2_b3_cpu_w,p2_b3_cpu})
 );
 
@@ -820,7 +819,7 @@ DPB p2_b4 (
     .WREB(wreb2),
     .BLKSELB({ 1'b0, CPU_ADDRESS[15:14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[4]}),
+    .DIB({15'b0,CPU_DATA[4]}),
     .DOB({p2_b4_cpu_w,p2_b4_cpu})
 );
 
@@ -853,7 +852,7 @@ DPB p2_b5 (
     .WREB(wreb2),
     .BLKSELB({ 1'b0, CPU_ADDRESS[15:14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[5]}),
+    .DIB({15'b0,CPU_DATA[5]}),
     .DOB({p2_b5_cpu_w,p2_b5_cpu})
 );
 
@@ -886,7 +885,7 @@ DPB p2_b6 (
     .WREB(wreb2),
     .BLKSELB({ 1'b0, CPU_ADDRESS[15:14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[6]}),
+    .DIB({15'b0,CPU_DATA[6]}),
     .DOB({p2_b6_cpu_w,p2_b6_cpu})
 );
 
@@ -919,7 +918,7 @@ DPB p2_b7 (
     .WREB(wreb2),
     .BLKSELB({ 1'b0, CPU_ADDRESS[15:14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[7]}),
+    .DIB({15'b0,CPU_DATA[7]}),
     .DOB({p2_b7_cpu_w,p2_b7_cpu})
 );
 
@@ -980,7 +979,7 @@ DPB p3_b0 (
     .WREB(wreb),
     .BLKSELB({1'b0,CPU_ADDRESS[15:14]}),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[0]}),
+    .DIB({15'b0,CPU_DATA[0]}),
     .DOB({p3_b0_cpu_w,p3_b0_cpu})
 );
 
@@ -1012,7 +1011,7 @@ DPB p3_b1 (
     .WREB(wreb),
     .BLKSELB({1'b0,CPU_ADDRESS[15:14]}),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[1]}),
+    .DIB({15'b0,CPU_DATA[1]}),
     .DOB({p3_b1_cpu_w,p3_b1_cpu})
 );
 
@@ -1044,7 +1043,7 @@ DPB p3_b2 (
     .WREB(wreb),
     .BLKSELB({1'b0,CPU_ADDRESS[15:14]}),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[2]}),
+    .DIB({15'b0,CPU_DATA[2]}),
     .DOB({p3_b2_cpu_w,p3_b2_cpu})
 );
 
@@ -1076,7 +1075,7 @@ DPB p3_b3 (
     .WREB(wreb),
     .BLKSELB({1'b0,CPU_ADDRESS[15:14]}),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[3]}),
+    .DIB({15'b0,CPU_DATA[3]}),
     .DOB({p3_b3_cpu_w,p3_b3_cpu})
 );
 
@@ -1109,7 +1108,7 @@ DPB p3_b4 (
     .WREB(wreb),
     .BLKSELB({1'b0,CPU_ADDRESS[15:14]}),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[4]}),
+    .DIB({15'b0,CPU_DATA[4]}),
     .DOB({p3_b4_cpu_w,p3_b4_cpu})
 );
 
@@ -1142,7 +1141,7 @@ DPB p3_b5 (
     .WREB(wreb),
     .BLKSELB({1'b0,CPU_ADDRESS[15:14]}),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[5]}),
+    .DIB({15'b0,CPU_DATA[5]}),
     .DOB({p3_b5_cpu_w,p3_b5_cpu})
 );
 
@@ -1174,7 +1173,7 @@ DPB p3_b6 (
     .WREB(wreb),
     .BLKSELB({1'b0,CPU_ADDRESS[15:14]}),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[6]}),
+    .DIB({15'b0,CPU_DATA[6]}),
     .DOB({p3_b6_cpu_w,p3_b6_cpu})
 );
 
@@ -1206,7 +1205,7 @@ DPB p3_b7 (
     .WREB(wreb),
     .BLKSELB({1'b0,CPU_ADDRESS[15:14]}),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[7]}),
+    .DIB({15'b0,CPU_DATA[7]}),
     .DOB({p3_b7_cpu_w,p3_b7_cpu})
 );
 
@@ -1266,7 +1265,7 @@ DPB p4_b0 (
     .WREB(wreb4),
     .BLKSELB({ 1'b1, CPU_ADDRESS[15:14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[0]}),
+    .DIB({15'b0,CPU_DATA[0]}),
     .DOB({p4_b0_cpu_w,p4_b0_cpu})
 );
 
@@ -1298,7 +1297,7 @@ DPB p4_b1 (
     .WREB(wreb4),
     .BLKSELB({ 1'b1, CPU_ADDRESS[15:14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[1]}),
+    .DIB({15'b0,CPU_DATA[1]}),
     .DOB({p4_b1_cpu_w,p4_b1_cpu})
 );
 
@@ -1330,7 +1329,7 @@ DPB p4_b2 (
     .WREB(wreb4),
     .BLKSELB({ 1'b1, CPU_ADDRESS[15:14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[2]}),
+    .DIB({15'b0,CPU_DATA[2]}),
     .DOB({p4_b2_cpu_w,p4_b2_cpu})
 );
 
@@ -1363,7 +1362,7 @@ DPB p4_b3 (
     .WREB(wreb4),
     .BLKSELB({ 1'b1, CPU_ADDRESS[15:14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[3]}),
+    .DIB({15'b0,CPU_DATA[3]}),
     .DOB({p4_b3_cpu_w,p4_b3_cpu})
 );
 
@@ -1396,7 +1395,7 @@ DPB p4_b4 (
     .WREB(wreb4),
     .BLKSELB({ 1'b1, CPU_ADDRESS[15:14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[4]}),
+    .DIB({15'b0,CPU_DATA[4]}),
     .DOB({p4_b4_cpu_w,p4_b4_cpu})
 );
 
@@ -1429,7 +1428,7 @@ DPB p4_b5 (
     .WREB(wreb4),
     .BLKSELB({ 1'b1, CPU_ADDRESS[15:14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[5]}),
+    .DIB({15'b0,CPU_DATA[5]}),
     .DOB({p4_b5_cpu_w,p4_b5_cpu})
 );
 
@@ -1462,7 +1461,7 @@ DPB p4_b6 (
     .WREB(wreb4),
     .BLKSELB({ 1'b1, CPU_ADDRESS[15:14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[6]}),
+    .DIB({15'b0,CPU_DATA[6]}),
     .DOB({p4_b6_cpu_w,p4_b6_cpu})
 );
 
@@ -1495,7 +1494,7 @@ DPB p4_b7 (
     .WREB(wreb4),
     .BLKSELB({ 1'b1, CPU_ADDRESS[15:14] }),
     .ADB(CPU_ADDRESS[13:0]),
-    .DIB({15'b0,CPU_WR_DATA[7]}),
+    .DIB({15'b0,CPU_DATA[7]}),
     .DOB({p4_b7_cpu_w,p4_b7_cpu})
 );
 
@@ -1601,14 +1600,14 @@ MUX4 mx_b7 (
     .O(tb_b7)
 );
 
-assign CPU_RD_DATA[0] = oen ? tb_b0 : 1'bz;
-assign CPU_RD_DATA[1] = oen ? tb_b1 : 1'bz;
-assign CPU_RD_DATA[2] = oen ? tb_b2 : 1'bz;
-assign CPU_RD_DATA[3] = oen ? tb_b3 : 1'bz;
-assign CPU_RD_DATA[4] = oen ? tb_b4 : 1'bz;
-assign CPU_RD_DATA[5] = oen ? tb_b5 : 1'bz;
-assign CPU_RD_DATA[6] = oen ? tb_b6 : 1'bz;
-assign CPU_RD_DATA[7] = oen ? tb_b7 : 1'bz;
+assign CPU_DATA[0] = oen ? tb_b0 : 1'bz;
+assign CPU_DATA[1] = oen ? tb_b1 : 1'bz;
+assign CPU_DATA[2] = oen ? tb_b2 : 1'bz;
+assign CPU_DATA[3] = oen ? tb_b3 : 1'bz;
+assign CPU_DATA[4] = oen ? tb_b4 : 1'bz;
+assign CPU_DATA[5] = oen ? tb_b5 : 1'bz;
+assign CPU_DATA[6] = oen ? tb_b6 : 1'bz;
+assign CPU_DATA[7] = oen ? tb_b7 : 1'bz;
 
 `include "48K ROM Image.v"
 

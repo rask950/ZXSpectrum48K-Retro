@@ -18,9 +18,8 @@ module ZX_Spectrum_ULA(
 	input				CPU_MREQ,
 	input				CPU_RD,
 	input				CPU_WR,
-	input		[15: 0] CPU_ADDRESS,
-	input		[ 7: 0] CPU_WR_DATA,
-	output		[ 7: 0] CPU_RD_DATA,
+	inout		[ 7: 0] CPU_DATA_BUS,
+	input		[15: 0] CPU_ADDRESS_BUS,
 	output				CPU_INT,
 	output				CPU_WAIT,
 
@@ -298,8 +297,8 @@ always @ (posedge CLK_7) begin
 
 	if (~(CPU_IORQ | CPU_WR)) begin												// IO Port write
 
-		if (  ~CPU_ADDRESS[IO_PORT1])					IO_PORT_ULA <= CPU_WR_DATA;		// Standard spectrum IO					
-		if ( ~(CPU_ADDRESS[IO_PORT2] | IO_PORT_MEM[5])) IO_PORT_MEM <= CPU_WR_DATA;		// 128K Memory paging register
+		if (  ~CPU_ADDRESS_BUS[IO_PORT1])					IO_PORT_ULA <= CPU_DATA_BUS;	// Standard spectrum IO					
+		if ( ~(CPU_ADDRESS_BUS[IO_PORT2] | IO_PORT_MEM[5])) IO_PORT_MEM <= CPU_DATA_BUS;	// Memory paging register
 
 	end
 
@@ -342,13 +341,13 @@ always @ (posedge CLK_7) begin
 
 end
 
-assign CPU_RD_DATA	= ~(CPU_IORQ | CPU_RD | CPU_ADDRESS[IO_PORT1]) ? { 1'b1, IO_IN[5], 1'b1, IO_IN[4:0] & ~USB_IO(CPU_ADDRESS[15:8]) } : 8'bz;
+assign CPU_DATA_BUS	= ~(CPU_IORQ | CPU_RD | CPU_ADDRESS_BUS[IO_PORT1]) ? { 1'b1, IO_IN[5], 1'b1, IO_IN[4:0] & ~USB_IO(CPU_ADDRESS_BUS[15:8]) } : 8'bz;
 
-assign CPU_RD_DATA	= ~(CPU_IORQ | CPU_RD | CPU_ADDRESS[IO_PORT2]) ? IO_PORT_MEM : 8'bz;
+assign CPU_DATA_BUS	= ~(CPU_IORQ | CPU_RD | CPU_ADDRESS_BUS[IO_PORT2]) ? IO_PORT_MEM : 8'bz;
 
 assign IO_OUT		= IO_PORT_ULA[4:3];												// Audio output bits
 
-assign CPU_WAIT		= ~BYTES[3] | CPU_MREQ | CPU_ADDRESS[15] | ~CPU_ADDRESS[14]; 	// Mimic memory contention using WAIT
+assign CPU_WAIT		= ~BYTES[3] | CPU_MREQ | CPU_ADDRESS_BUS[15] | ~CPU_ADDRESS_BUS[14]; 	// Mimic memory contention using WAIT
 
 assign CPU_INT		= ~DVI_INT;														// CPU Interrupt is active low
 
@@ -455,7 +454,7 @@ assign KBIT =	KBD_DATA[ { KCAP, USB1_KEY[0][6:0] }] |
 				KBD_DATA[ { KCAP, USB1_KEY[2][6:0] }] |
 				KBD_DATA[ { KCAP, USB1_KEY[3][6:0] }];
 
-assign CPU_RD_DATA = CPU_ADDRESS[7:0] == 8'd31 && ~(CPU_IORQ | CPU_RD) ? USB1_KMOD : 8'bz;
+assign CPU_DATA_BUS = CPU_ADDRESS_BUS[7:0] == 8'd31 && ~(CPU_IORQ | CPU_RD) ? USB1_KMOD : 8'bz;
 
 assign RESET = USB1_KMOD[1] & USB1_KMOD[2] & USB1_KMOD[6];
 

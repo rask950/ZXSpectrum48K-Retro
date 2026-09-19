@@ -10,10 +10,10 @@
 
 module REG_DECODE ( 
 
-    input  reg				IY,
-    input  reg				IX,
-    input  reg				EXX,
-    input  reg				EXA,
+    input  				IY,
+    input  				IX,
+    input  				EXX,
+    input               EXA,
     input  reg		[ 2: 0]	REG_NUM,
 
     output reg		[ 4: 0]	REG8_INDEX,                  // Output index for 8 bit reg
