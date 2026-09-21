@@ -205,5 +205,4 @@ ZX_Spectrum_ULA #(
  );
 
 
-
 endmodule

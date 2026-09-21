@@ -2,7 +2,26 @@
 
 module ZX_Spectrum_ULA(
 
+	// External physical connections
+
 	input 				SYS_CLK,					// 28MHz (MASTER)
+
+	input  		[ 5: 0] IO_IN,						// Input  port $FE - AUDIO IN/KB
+	output 		[ 1: 0] IO_OUT,						// Output port $FE - MIC & SPEAKER
+
+	output		[ 1: 0] LED,
+
+	inout				USB0_DP,					// USB ports
+	inout				USB0_DN,
+	inout				USB1_DP,
+	inout				USB1_DN,
+
+	output		[ 2: 0] TMDSp,						// DVI Output
+	output		[ 2: 0] TMDSn,
+	output				TMDSp_clock,
+	output				TMDSn_clock,
+
+	// Internal system signals
 
 	output				RESET,						// reset signal
 
@@ -23,44 +42,28 @@ module ZX_Spectrum_ULA(
 	output				CPU_INT,
 	output				CPU_WAIT,
 
-	// Physical connections
+	output		[ 7: 0] PAGING						// Paging register
 
-	input  		[ 5: 0] IO_IN,						// Input  port $FE - AUDIO IN/KB
-	output 		[ 1: 0] IO_OUT,						// Output port $FE - MIC & SPEAKER
-
-	output		[ 7: 0] PAGING,						// Paging register
-
-	output		[ 1: 0] LED,
-
-	inout				USB0_DP,					// USB ports
-	inout				USB0_DN,
-	inout				USB1_DP,
-	inout				USB1_DN,
-
-	output		[ 2: 0] TMDSp,						// DVI Output
-	output		[ 2: 0] TMDSn,
-	output				TMDSp_clock,
-	output				TMDSn_clock
 );
 
-parameter IO_PORT1 = 0;								// Bit number for port $FE
-parameter IO_PORT2 = 2;								// Bit number for port $FB (paging)
+parameter IO_PORT1		= 0;						// Bit number for port $FE
+parameter IO_PORT2		= 2;						// Bit number for port $FB (paging)
 
-localparam FALSE = 1'b0;
-localparam TRUE  = 1'b1;
+localparam FALSE		= 1'b0;
+localparam TRUE			= 1'b1;
 
 ////////////////////////////////////////////////////////////////////////
 // ULA IO port regs
 
-reg	[ 7: 0]IO_PORT_ULA;								// ULA's only IO port
-reg	[ 7: 0]IO_PORT_MEM;								// Memory paging register
+reg				[ 7: 0]	IO_PORT_ULA;				// ULA's only IO port
+reg				[ 7: 0] IO_PORT_MEM;				// Memory paging register
 
 assign PAGING = IO_PORT_MEM;
 
 initial begin
 
-	IO_PORT_ULA = 0;
-	IO_PORT_MEM = 0; //8'b01010000;					// Default page-in SD card mem
+	IO_PORT_ULA = 8'd0;								// Page in SD Rom and 48K ROM at 
+	IO_PORT_MEM = 8'b01010000;						// Default page-in SD card mem
 
 end
 
@@ -100,64 +103,64 @@ localparam SPEC_VEND		= 480;
 localparam SPEC_DSTART		= 94;					// Spectrum DMA start and end 1 row before pixel output
 localparam SPEC_DEND		= 478;
 
-reg [ 3: 0]COLOUR_INDEX;							// Current pixel colour index 0-15
+reg				[ 3: 0]	COLOUR_INDEX;				// Current pixel colour index 0-15
 
-reg [ 7: 0]DVI_RED;									// RGB values for current pixel
-reg [ 7: 0]DVI_GREEN;
-reg [ 7: 0]DVI_BLUE;
+reg				[ 7: 0] DVI_RED;					// RGB values for current pixel
+reg 			[ 7: 0] DVI_GREEN;
+reg 			[ 7: 0] DVI_BLUE;
 
-reg [ 9: 0]DVI_X;									// Horizontal and vertical counters
-reg [ 9: 0]DVI_Y;
+reg				[ 9: 0] DVI_X;						// Horizontal and vertical counters
+reg				[ 9: 0] DVI_Y;
 
-reg DVI_HSYNC;										// Horizontal and vertical sync signals
-reg DVI_VSYNC;
+reg						DVI_HSYNC;					// Horizontal and vertical sync signals
+reg 					DVI_VSYNC;
 
-reg DVI_ENABLE;										// Flag indicating the visible display is being output at DVI
-reg DVI_INT;										// Interrupt generation output
+reg						DVI_ENABLE;					// Flag indicating the visible display is being output at DVI
+reg						DVI_INT;					// Interrupt generation output
 
-reg PIXEL_ENABLE;									// Flags for active TV pixel output vs border output
-reg PIXEL_READ;										// Indicates pixel data being read from RAM
+reg						PIXEL_ENABLE;				// Flags for active TV pixel output vs border output
+reg						PIXEL_READ;					// Indicates pixel data being read from RAM
 
 initial begin
 
-	DVI_X = 0;
-	DVI_Y = 0;
+	DVI_X				= 0;
+	DVI_Y				= 0;
 
-	DVI_HSYNC  = FALSE;
-	DVI_VSYNC  = FALSE;
+	DVI_HSYNC			= FALSE;
+	DVI_VSYNC			= FALSE;
 
-	DVI_ENABLE = TRUE;
-	DVI_INT	= FALSE;
+	DVI_ENABLE			= TRUE;
+	DVI_INT				= FALSE;
 
-	PIXEL_ENABLE  = FALSE;
-	PIXEL_READ	= FALSE;
+	PIXEL_ENABLE		= FALSE;
+	PIXEL_READ			= FALSE;
 
-	DMA_RD_ENABLE = FALSE;
+	DMA_RD_ENABLE		= FALSE;
 
 end
 
 ////////////////////////////////////////////////////////////////////////
 // DVI encoder
 
-ZX_Spectrum_DVI dvi(
+ZX_Spectrum_DVI dvi(												// DVI encoder IP
 
-	.CLK_PIXEL(	 CLK_28),						// 28MHz DVI pixel clock
-	.CLK_SERIAL( CLK_140),						// 140MHz DVI serial bit shift
+	.CLK_PIXEL(	 		CLK_28),									// 28MHz DVI pixel clock
+	.CLK_SERIAL( 		CLK_140),									// 140MHz DVI serial bit shift
 
-	.RESET(		 1'b1),							// RESET (active low)
+	.RESET(		 		1'b1),										// RESET (active low)
 
-	.DVI_HSYNC(	 DVI_HSYNC),					// Horizontal and
-	.DVI_VSYNC(	 DVI_VSYNC),					// Vertical sync
-	.DVI_ENABLE( DVI_ENABLE),					// Data enable (displaying pixels)
+	.DVI_HSYNC(	 		DVI_HSYNC),									// Horizontal and
+	.DVI_VSYNC(	 		DVI_VSYNC),									// Vertical sync
+	.DVI_ENABLE( 		DVI_ENABLE),								// Data enable (displaying pixels)
 
-	.DVI_RED(	 DVI_RED),						// DVI_RED component byte
-	.DVI_GREEN(	 DVI_GREEN),					// DVI_GREEN component byte
-	.DVI_BLUE(	 DVI_BLUE),						// DVI_BLUE component byte
+	.DVI_RED(	 		DVI_RED),									// DVI_RED component byte
+	.DVI_GREEN(	 		DVI_GREEN),									// DVI_GREEN component byte
+	.DVI_BLUE(	 		DVI_BLUE),									// DVI_BLUE component byte
 
-	.TMDS_CLK_P( TMDSp_clock),					// TMDS +ve clock out
-	.TMDS_CLK_N( TMDSn_clock),					// TMDS -ve clock out
-	.TMDS_DATA_P(TMDSp),						// TMDS +ve data out (serialized)
-	.TMDS_DATA_N(TMDSn)							// TMDS -ve data out (serialized)
+	.TMDS_CLK_P( 		TMDSp_clock),								// TMDS +ve clock out
+	.TMDS_CLK_N( 		TMDSn_clock),								// TMDS -ve clock out
+	.TMDS_DATA_P( 		TMDSp),										// TMDS +ve data out (serialized)
+	.TMDS_DATA_N( 		TMDSn)										// TMDS -ve data out (serialized)
 );
 
 ////////////////////////////////////////////////////////////////////////
@@ -165,22 +168,22 @@ ZX_Spectrum_DVI dvi(
 
 ZX_Spectrum_PAL pal(
 
-	.COLOUR_INDEX(COLOUR_INDEX),
-	.RED(		  DVI_RED),
-	.GREEN(		  DVI_GREEN),
-	.BLUE(		  DVI_BLUE)
+	.COLOUR_INDEX(		COLOUR_INDEX),
+	.RED(		  		DVI_RED),
+	.GREEN(				DVI_GREEN),
+	.BLUE(				DVI_BLUE)
 );
 
 ////////////////////////////////////////////////////////////////////////
 // Generate DVI raster
 
-always @(posedge CLK_28) begin															// DVI Pixel clock
+always @(posedge CLK_28) begin										// DVI Pixel clock
 
-	DVI_X	  <= DVI_X < DVI_WIDTH ? DVI_X + 10'd1 : 10'd0;								// Column/Row counters
+	DVI_X	 		<= DVI_X < DVI_WIDTH ? DVI_X + 10'd1 : 10'd0;	// Column/Row counters
 
-	if (DVI_X == DVI_WIDTH) begin 
+	if (DVI_X		== DVI_WIDTH) begin 
 
-		DVI_Y <= DVI_Y < DVI_HEIGHT ? DVI_Y + 10'd1 : 10'd0;
+		DVI_Y		<= DVI_Y < DVI_HEIGHT ? DVI_Y + 10'd1 : 10'd0;
 
 	end
 
@@ -206,7 +209,7 @@ end
 ////////////////////////////////////////////////////////////////////////
 // Flash delay counter, uses 50Hz interrupt signal as clock
 
-reg [ 4: 0]FRAMES;																		// Count frames for flash period. Bit 4 = flash state
+reg				[ 4: 0]	FRAMES;										// Count frames for flash period. Bit 4 = flash state
 
 initial begin
 
@@ -214,7 +217,7 @@ initial begin
 
 end
 
-always @ (posedge DVI_INT) begin														// Use interrupt signal to increment count
+always @ (posedge DVI_INT) begin									// Use interrupt signal to increment count
 
 	FRAMES <= FRAMES + 5'd1;
 
@@ -223,13 +226,13 @@ end
 ////////////////////////////////////////////////////////////////////////
 // SPECTRUM video processing
 
-reg	[ 7: 0]PIX_BUF[0:63];														// Buffer 2 rows of pixel data
-reg	[ 7: 0]ATT_BUF[0:63];														// Buffer 2 rows of attribute data
+reg				[ 7: 0] PIX_BUF[0:63];								// Buffer 2 rows of pixel data
+reg				[ 7: 0] ATT_BUF[0:63];								// Buffer 2 rows of attribute data
 
-reg	[ 7: 0]PIX;
-reg	[ 7: 0]ATT;
+reg				[ 7: 0]	PIX;
+reg				[ 7: 0]	ATT;
 
-reg	[ 7: 0]PIXELS;																// Count the 256 pixels in each row
+reg				[ 7: 0]	PIXELS;										// Count the 256 pixels in each row
 
 initial begin
 
@@ -244,12 +247,12 @@ always @ (posedge CLK_14) begin
 
 	if (PIXEL_READ) begin
 
-		PIXELS <= PIXELS + 8'd1;												// Count the 256 pixels of each row
+		PIXELS <= PIXELS + 8'd1;									// Count the 256 pixels of each row
 
-		if (PIXELS[2:0] == 0) begin												// Every 8 pixels pick up new bytes from the buffer
+		if (PIXELS[2:0] == 0) begin									// Every 8 pixels pick up new bytes from the buffer
 
-			ATT <= ATT_BUF[ { ~BYTES[8], PIXELS[7:3] } ];						// ~BYTES[8] is the select for the 2 buffers. The one NOT being used to fill from RAM
-			PIX <= PIX_BUF[ { ~BYTES[8], PIXELS[7:3] } ];						// Blocking to ensure PIX is set before encoding the colour index
+			ATT <= ATT_BUF[ { ~BYTES[8], PIXELS[7:3] } ];			// ~BYTES[8] is the select for the 2 buffers. The one NOT being used to fill from RAM
+			PIX <= PIX_BUF[ { ~BYTES[8], PIXELS[7:3] } ];
 
 		end
 		else begin
@@ -259,21 +262,21 @@ always @ (posedge CLK_14) begin
 		end
 	end
 
-	if (PIXEL_ENABLE)															// Calculate the colour index from Attribute/pixel on/off
+	if (PIXEL_ENABLE)												// Calculate the colour index from Attribute/pixel on/off
 		COLOUR_INDEX <= { ATT[6], (PIX[7] ^ (ATT[7] & FRAMES[4])) ? ATT[2:0] : ATT[5:3] };
 	else
-		COLOUR_INDEX <= IO_PORT_ULA[2:0];										// Border colour from IO port reg
+		COLOUR_INDEX <= IO_PORT_ULA[2:0];							// Border colour from IO port reg
 
 end
 
 ////////////////////////////////////////////////////////////////////////
 // Read video RAM and fill buffer
 
-reg [15:0]BYTES;																// This counts through 8K video ram + low bit state
+reg				[15: 0]	BYTES;										// This counts through 8K video ram + low bit state
 
-// Bits: 15:4, 2 - 12 bit index in memory (0-8191)
+// Bits: 15:4,	 - 12 bit memory offset (0-8191)
 // 		 3 		 - 1 = Memory is being accessed. Used for contention compatibility
-//		 2:0	 - 0 = Set DMA address for even pixel byte
+//		 2:0	 - 0 = Set DMA address for even pixel byte			// State for reading pixel and attribute data
 //				 - 1 = Read pixel
 //				 - 2 = Set DMA address for even attribute byte
 //				 - 3 = Read attribute
@@ -292,13 +295,13 @@ always @ (posedge CLK_7) begin
 
 	if (RESET) begin
 		IO_PORT_ULA <= 8'd0;
-		IO_PORT_MEM <= 8'b00010000;												// Page in SD ROM and unlock
+		IO_PORT_MEM <= { 1'b0, IO_PORT_MEM[6], 6'b010000 };			// Page in SD ROM and unlock but don't change the ROM paging bit
 	end
 
-	if (~(CPU_IORQ | CPU_WR)) begin												// IO Port write
+	if (~(CPU_IORQ | CPU_WR)) begin									// IO Port write
 
 		if (  ~CPU_ADDRESS_BUS[IO_PORT1])					IO_PORT_ULA <= CPU_DATA_BUS;	// Standard spectrum IO					
-		if ( ~(CPU_ADDRESS_BUS[IO_PORT2] | IO_PORT_MEM[5])) IO_PORT_MEM <= CPU_DATA_BUS;	// Memory paging register
+		if ( ~(CPU_ADDRESS_BUS[IO_PORT2] | IO_PORT_MEM[5])) IO_PORT_MEM <= CPU_DATA_BUS;	// Memory paging register - write if not locked
 
 	end
 
@@ -306,25 +309,25 @@ always @ (posedge CLK_7) begin
 
 		BYTES <= BYTES + 16'd1;
 
-		if (BYTES[3]) begin														// NB CPU clock inhibit bit 3
+		if (BYTES[3]) begin											// NB CPU clock inhibit bit 3
 		
 			case(BYTES[1:0])
-				'b00: begin														// Address for pixel
+				'b00: begin											// Address for pixel
 
 					DMA_ADDRESS <= { 3'b010, BYTES[15:14], BYTES[10:8], BYTES[13:11], BYTES[7:4], BYTES[2] };
 
 				end
-				'b01: begin														// Read pixels byte
+				'b01: begin											// Read pixels byte
 
 					PIX_BUF[ { BYTES[8], BYTES[7:4], BYTES[2] } ] <= DMA_DATA_IN;
 
 				end
-				'b10: begin														// Address for Attribute
+				'b10: begin											// Address for Attribute
 
 					DMA_ADDRESS <= { 6'b010110, BYTES[15:11], BYTES[7:4], BYTES[2] };
 
 				end
-				'b11: begin														// Read Attribute byte
+				'b11: begin											// Read Attribute byte
 
 					ATT_BUF[ { BYTES[8], BYTES[7:4], BYTES[2] } ] <= DMA_DATA_IN;
 
