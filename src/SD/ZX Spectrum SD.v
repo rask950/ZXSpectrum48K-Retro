@@ -11,6 +11,7 @@ module ZX_Spectrum_SD (
 	output reg 		[ 7: 0]	DMA_WR_DATA,								// SD DMA
 	output			[15: 0]	DMA_ADDRESS,
 	output reg				DMA_WR_ENABLE,
+
 	input			[ 7: 0]	ULA_PAGING,									// ULA's memory paging register
 
 	output					SD_CLK,										// SD Card external connections
@@ -98,6 +99,7 @@ reg					[ 6: 0]	CLK_COUNT;
 reg					[ 7: 0]	CMD_BIT_OUT;								// Bit counters for command messages
 reg					[ 7: 0]	CMD_BIT_IN;
 reg					[13: 0]	DAT_BIT_IN;									// Bit counter for data messages 
+
 reg					[13: 0]	TIMEOUT;									// Timeout counter max 10000
 reg					[15: 0]	CALC_CRC;									// CRC calculated from data
 reg					[15: 0]	DATA_CRC;									// CRC read from data block
@@ -134,11 +136,11 @@ end
 wire 					IO_SEL;
 wire			[ 3: 0]	IO_REG;
 
-assign		 IO_SEL 	= CPU_ADDRESS[IO_PORT] |						// Selected as IO device (Active low)
+assign		IO_SEL	 	= CPU_ADDRESS[IO_PORT] |						// Selected as IO device (Active low)
 						  CPU_IORQ |
 						  ULA_PAGING[5];
 
-assign		 IO_REG 	= CPU_ADDRESS[11: 8];							// Internal register number 0-15
+assign		IO_REG	 	= CPU_ADDRESS[11: 8];							// Internal register number 0-15
 
 assign		SD_CLK		= CLK_COUNT[CLK_SPEED];							// Clock speed select
 
@@ -150,7 +152,7 @@ assign		SD_CMD	 	= SD_OUT_EN ? SD_BIT_OUT  : 1'bz;				// Write command bit
 wire		SD_RD_BIT	= SD_OUT_EN ? 1'b1		  : SD_CMD;				// Read command bit
 wire		SD_RD_DAT	= SD_OUT_EN ? 1'b1		  : SD_DAT0;			// Read data bit
 
-assign		CPU_DATA_BUS = IO_SEL | CPU_RD ?  8'bz : { BUSY, STATUS };	// CPU read status
+assign		CPU_DATA_BUS = IO_SEL | CPU_RD ?  8'bz : { BUSY, STATUS };	// CPU read status if IO_SEL AND CPU_RD are both low
 
 ///////////////////////////////////////////////////////////////////////////
 // Clock generator/IO port writer
@@ -204,18 +206,29 @@ end
 ///////////////////////////////////////////////////////////////////////////
 // SD state machine
 
+	// Combinational logic for FSM next state determination
+
+always @(*) begin
+
+	if (RESET) begin
+
+        FSM_STATE       			 = STATE_IDLE;
+
+	end else begin
+
+        FSM_STATE					 = FSM_NEXT_STATE;
+
+    end
+end
+
 always @(posedge SD_CLK) begin
 
 	if (RESET) begin													// Reset button
 
 		DMA_WR_ENABLE <= FALSE;
-
-		FSM_NEXT_STATE <= STATE_IDLE;
 		
 	end else begin
 	
-		FSM_STATE = FSM_NEXT_STATE;
-
 		case(FSM_STATE)
 
 
@@ -226,25 +239,26 @@ always @(posedge SD_CLK) begin
 				STATUS		<= 0;										// No errors yet
 				BUSY		<= TRUE;									// We're getting busy
 
-				CMD_BIT_IN <= CMD_CODE == CMD_RESET	   ? RSP_NONE :		// Set expected response length
-							  CMD_CODE == CMD_SEND_CID ? RSP_LONG :
-														 RSP_SHORT;
+				CMD_BIT_IN 	<= CMD_CODE == CMD_RESET	? RSP_NONE :	// Set expected response length
+							   CMD_CODE == CMD_SEND_CID ? RSP_LONG :
+														  RSP_SHORT;
 
-				TIMEOUT 	<= 14'd0;									// Clear timeout for next state
-				FSM_NEXT_STATE <= STATE_PRE_WRITE;
+				TIMEOUT 		<= 14'd0;								// Clear timeout for next state
+				FSM_NEXT_STATE	<= STATE_PRE_WRITE;
 
 			end
 
 		end
 
-		
+		// Begin writing the command (in the buffer) to the SD Card
+
 		STATE_PRE_WRITE: begin											// Pre write - wait for TIMEOUT cycles
 
 			TIMEOUT			<= TIMEOUT + 14'd1;							// Wait for TIMEOUT cycles
 
-			{ SD_OUT_EN, SD_BIT_OUT } <= { TIMEOUT[4], TRUE };  		// Set output status - enable 16 bits output as preamble
+			{ SD_OUT_EN, SD_BIT_OUT } <= { TIMEOUT[4], TRUE };  		// Bit out is set at cycle 16 until 31
 
-			if (TIMEOUT		== PRE_WR_CMD) begin 						// Timeout expired - start write
+			if (TIMEOUT		== PRE_WR_CMD) begin 						// Timeout expired (31 cycles) - start write
 
 				CMD_CRC	 	<= 7'd0;									// Prepare to write, clear CRC
 				CMD_BIT_OUT <= CMD_BITS;								// Set message size in bits
@@ -268,7 +282,7 @@ always @(posedge SD_CLK) begin
 
 			end else begin
 				
-				CMD_BIT_OUT 	<= CMD_BIT_OUT - 8'd1;						// Count bits sent
+				CMD_BIT_OUT 	<= CMD_BIT_OUT - 8'd1;					// Count down bits sent
 
 				{ SD_OUT_EN, SD_BIT_OUT } 	 <= { TRUE, CMD_MSG[ CMD_BIT_OUT ] };			// Enable output and write bit
 
@@ -277,10 +291,11 @@ always @(posedge SD_CLK) begin
 			end
 		end
 
+		// Now begin reading the response from the SD Card
 
 		STATE_PRE_READ: begin											// Wait for start bit of response
 
-			if (SD_RD_BIT		== 1'b0) begin
+			if (SD_RD_BIT		== 1'b0) begin							// Data goes low to indicate start of response
 
 				DAT_BIT_IN		<= 16'h1008;							// Count data bits read - store AFTER sector buffer
 				BYTE_BUF		<= 8'd0;		  						// Clear byte buffer
