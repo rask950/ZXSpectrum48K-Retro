@@ -57,8 +57,8 @@ localparam PRE_RD_CMD			= 16'd1000;								// Pre read command timeout
 localparam PRE_RD_DAT			= 16'd10000;							// Pre read data timeout
 
 localparam RSP_NONE				= 8'd0;									// No response
-localparam RSP_SHORT			= 8'd46;								// Short reply high bit
-localparam RSP_LONG				= 8'd134;								// Long reply high bit
+localparam RSP_SHORT			= 10'd6;								// 6 bytes including CRC7
+localparam RSP_LONG				= 10'd17;								// 17 bytes including CRC7
 
 localparam CMD_BITS				= 16'd47;								// High bit index of command
 localparam DATA_BITS			= 16'd4111;								// Number of bits in 512 bytes + 2 byte CRC
@@ -283,105 +283,16 @@ always @(posedge SD_CLK) begin
 		end
 
 
-		// STATE_PRE_WRITE: begin											// Pre write - wait for TIMEOUT cycles
-
-		// 	TIMEOUT			<= TIMEOUT + 14'd1;							// Wait for TIMEOUT cycles
-
-		// 	if (TIMEOUT		== PRE_WR_CMD) begin 						// Timeout expired - start write
-
-		// 		CMD_CRC	 	<= 7'd0;									// Prepare to write, clear CRC
-	
-		// 		CMD_BIT_OUT <= CMD_BITS;								// Set message size in bits
-
-		// 		FSM_NEXT_STATE <= STATE_WRITE;							// Next state is WRITE
-
-		// 	end
-		// end
-
-
-		// STATE_WRITE: begin												// The actual WRITE operation
-
-		// 	if (CMD_BIT_OUT 	== 8'hFF) begin							// All bits sent
-
-		// 		SD_OUT_EN		<= FALSE;								// Turn off output
-
-		// 		TIMEOUT			<= PRE_RD_CMD;							// Set pre read timeout
-
-		// 		FSM_NEXT_STATE	<= CMD_CODE == CMD_RESET ? STATE_GO_IDLE :		// Read response if expected
-		// 												   STATE_PRE_READ;		// else go idle
-
-		// 	end else begin
-				
-		// 		CMD_BIT_OUT 	<= CMD_BIT_OUT - 8'd1;						// Count bits sent
-
-		// 		{ SD_OUT_EN, SD_BIT_OUT } 	 <= { TRUE, CMD_MSG[ CMD_BIT_OUT ] };			// Enable output and write bit
-
-		// 		if (CMD_BIT_OUT > 7) CMD_CRC <= CRC7( CMD_CRC, CMD_MSG[ CMD_BIT_OUT ] );	// Update CRC
-
-		// 	end
-		// end
-
-		// STATE_PRE_READ: begin											// Wait for start bit of response
-
-		// 	if (SD_RD_BIT		== 1'b0) begin
-
-		// 		DAT_BIT_IN		<= 16'h1008;							// Count data bits read - store AFTER sector buffer
-		// 		BYTE_BUF		<= 8'd0;		  						// Clear byte buffer
-		// 		DMA_WR_ENABLE	<= TRUE;								// Turn on DMA
-		// 		CMD_BIT_IN		<= CMD_CODE == CMD_SEND_CID ? RSP_LONG :
-		// 													  RSP_SHORT;
-		// 		FSM_NEXT_STATE	<= STATE_READ;
-
-		// 	end else begin
-
-		// 		TIMEOUT <= TIMEOUT - 14'd1;								// Timeout expires
-		// 		if (TIMEOUT == 14'd0) FSM_NEXT_STATE <= STATE_TIMEOUT;
-
-		// 	end
-
-		// end
-
-
-		// STATE_READ: begin
-			
-		// 	CMD_BIT_IN <= CMD_BIT_IN - 8'd1;							// Don't bother with CRC check as not all responses have one
-
-		// 	BYTE_BUF[ CMD_BIT_IN[2:0] ] <= SD_RD_BIT;					// Set bit in the byte buffer
-
-		// 	if (CMD_BIT_IN		== 8'hFF) begin							// All bits read
-
-		// 		DMA_WR_ENABLE	<= FALSE;								// Turn off DMA
-
-		// 		TIMEOUT			<= PRE_RD_DAT;							// Set longer timeout for data read
-
-		// 		FSM_NEXT_STATE	<= CMD_CODE == CMD_RD_BLOCK ? STATE_PRE_RD_DATA :
-		// 													  STATE_GO_IDLE;
-
-		// 	end else begin
-
-		// 		if ( CMD_BIT_IN[2:0] == 3'd7 ) begin					// Byte complete - write to RAM area
-
-		// 			DAT_BIT_IN 	<= DAT_BIT_IN + 14'd8;
-
-		// 			DMA_WR_DATA <= BYTE_BUF;
-
-		// 		end
-
-		// 	end
-		// end
-
-
-
 		STATE_PRE_READ: begin										// Wait for start bit of response
 
 			if (SD_RD_BIT		== 1'b0) begin
 
-				BYTE_COUNT 		<= CMD_CODE == CMD_SEND_CID ? 17 : 6;
+				BYTE_COUNT 		<= CMD_CODE == CMD_SEND_CID ? RSP_LONG :		// Set expected response size in bytes
+															  RSP_SHORT;
 
-				DMA_OFFSET		<= 10'h201;							// Count data bits read - store AFTER sector buffer
-				BYTE_BUF		<= 8'd0;	  						// Clear byte buffer
-				BIT_COUNT		<= 8'd6;							// Start at 6 as the start bit has already been read
-				DMA_WR_ENABLE	<= TRUE;							// Turn on DMA
+				DMA_OFFSET		<= 10'h200;							// Count data bits read - store AFTER sector buffer
+				BYTE_BUF		<= 8'h00;	  						// Clear byte buffer
+				BIT_COUNT		<= 8'd1;							// Start at 1 as the start bit has already been read
 
 				FSM_NEXT_STATE	<= STATE_READ;
 
@@ -397,9 +308,9 @@ always @(posedge SD_CLK) begin
 
 		STATE_READ: begin
 			
-			BIT_COUNT <= BIT_COUNT - 8'd1;						// Count bits read
+			BIT_COUNT <= BIT_COUNT + 8'd1;								// Count bits read
 
-			BYTE_BUF[ BIT_COUNT[2:0] ] <= SD_RD_BIT;				// Set bit in the byte buffer NB 7-0 MSB first
+			BYTE_BUF[ ~BIT_COUNT[2:0] ] <= SD_RD_BIT;					// Set bit in the byte buffer NB 7-0 MSB first
 
 			if (BYTE_COUNT		== 8'd0) begin							// All bytes read
 	
@@ -412,13 +323,17 @@ always @(posedge SD_CLK) begin
 
 			end else begin
 
-				if ( BIT_COUNT[2:0] == 3'd7 ) begin						// Byte complete - write to RAM area
+				if ( BIT_COUNT[2:0] == 3'd0 ) begin						// Byte complete - write to RAM area
 
 					DMA_OFFSET 	<= DMA_OFFSET + 10'd1;
 
-					DMA_WR_DATA <= BYTE_BUF;
+					{ DMA_WR_ENABLE, DMA_WR_DATA } <= { TRUE, BYTE_BUF };		// Turn on DMA
 
 					BYTE_COUNT <= BYTE_COUNT - 10'd1;
+
+				end else begin
+
+					DMA_WR_ENABLE 	<= FALSE;							// Turn off DMA for incomplete byte
 
 				end
 
@@ -518,10 +433,10 @@ always @(posedge SD_CLK) begin
 
 end
 
-assign DMA_ADDRESS = { SECTOR_BUFFER, DAT_BIT_IN[12:3] };				// Buffer address $2000 (8192)
+//assign DMA_ADDRESS = { SECTOR_BUFFER, DAT_BIT_IN[12:3] };				// Buffer address $2000 (8192)
 
 //						0 0 1 0 0 0   0 0 0 0 0 0 0 0 0 0
-//assign DMA_ADDRESS = { SECTOR_BUFFER, DMA_OFFSET };						// Buffer address $2000 (8192)
+assign DMA_ADDRESS = { SECTOR_BUFFER, DMA_OFFSET };						// Buffer address $2000 (8192)
 
 
 function automatic	[ 6: 0]	CRC7(
