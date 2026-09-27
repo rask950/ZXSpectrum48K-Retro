@@ -289,7 +289,7 @@ always @(posedge SD_CLK) begin
 												   RSP_LONG :			// These take into account that the start bit
 												   RSP_SHORT;			// has already been read
 
-				DMA_OFFSET		<= 10'h1FF;								// Memory offset BEFORE the response buffer starts
+				DMA_OFFSET		<= 10'h23F;								// Memory offset BEFORE the response buffer starts
 				BYTE_BUF		<= 8'h00;	  							// Clear byte buffer
 
 				FSM_NEXT_STATE	<= STATE_READ;
@@ -307,11 +307,11 @@ always @(posedge SD_CLK) begin
 
 		STATE_READ: begin
 			
-			BIT_COUNT <= BIT_COUNT - 13'd1;							// This counts DOWN bits (48 or 136) for short/long response
+			BIT_COUNT <= BIT_COUNT - 13'd1;							// This counts DOWN bits (46 or 134) for short/long response
 
 			BYTE_BUF[ BIT_COUNT[2:0] ] <= SD_RD_BIT;				// Set bit in the byte buffer NB 7-0 MSB first
 
-			if (&BIT_COUNT) begin									// ALL bits set in count ($1FF or -1) indicates all bits read
+			if (BIT_COUNT == 13'h1FFF) begin						// ALL bits set in count ($1FFF or -1) indicates all bits read
 
 				TIMEOUT			<= PRE_RD_DAT;						// Set timeout for data read
 				
@@ -336,11 +336,11 @@ always @(posedge SD_CLK) begin
 
 		STATE_PRE_RD_DATA: begin
 
-			if (~SD_RD_DAT) begin									// If start bit (0) found
+			if (SD_RD_DAT == 1'b0) begin							// If start bit (0) found
 
 				BIT_COUNT 		<= 13'd0;							// Bit to read from data input
 				BIT_3			<= 1'b0;							// Check for bit 3 changing
-				DMA_OFFSET		<= 10'h3FF;							// Memory address BEFORE the data buffer starts
+				DMA_OFFSET		<= 10'h03F;							// Start of buffer is 64 bytes ub
 				CALC_CRC		<= 16'b0;							// Clear calculated CRC
 
 				FSM_NEXT_STATE	<= STATE_RD_DATA;					// Enter read data state
@@ -365,17 +365,21 @@ always @(posedge SD_CLK) begin
 
 			if (BIT_COUNT[12]) begin								// Bit count => 4096 (0001 0000 0000 0000)
 
-				if (~|BIT_COUNT[11:0]) begin						// Exactly 4096 (NOT (BITS 11-0 ORed together))
+				if (BIT_COUNT[11:0] == 12'd0) begin					// Exactly 4096
 
 					DMA_OFFSET 	<= DMA_OFFSET + 10'd1;				// Transition from 4095 to 4096 requires another DMA write
 
 					{ DMA_WR_ENABLE, DMA_WR_DATA } <= { TRUE, BYTE_BUF };
 
+				end else begin
+
+					DMA_WR_ENABLE 	<= FALSE;						// Turn off DMA
+
 				end
 		
 				DATA_CRC[ ~BIT_COUNT[3:0] ] <= SD_RD_DAT;			// Set bit in the (16 bit) CRC reg
 
-				if (BIT_COUNT[4]) begin								// Bits 12 and 4 set: 0001 0000 0001 0000 = 4112
+				if (BIT_COUNT[4]) begin								// Bits 12 and 4 set: 0001 0000 0001 0000 = 4112 - CRC complete
 						
 					if (DATA_CRC != CALC_CRC) STATUS <= ERR_READ_FAIL;
 
@@ -388,7 +392,7 @@ always @(posedge SD_CLK) begin
 
 				CALC_CRC <= CRC16( CALC_CRC, SD_RD_DAT);			// Update calculated CRC16 with the new bit
 
-				if ( BIT_COUNT[3] != BIT_3 ) begin					// Bit 3 of counter changes every 8 bits so write byte to RAM
+				if (BIT_COUNT[3] != BIT_3) begin					// Bit 3 of counter changes every 8 bits so write byte to RAM
 
 					BIT_3 <= BIT_COUNT[3];
 
