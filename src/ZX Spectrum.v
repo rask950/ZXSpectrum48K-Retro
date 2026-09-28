@@ -21,8 +21,6 @@ module top(
 	output	  TMDSp_clock,
  	output	  TMDSn_clock,
 
-	output [1:0]led,
-
 	inout		USB0_DP,						// USB Data port 0
 	inout		USB0_DN,
 	inout		USB1_DP,						// USB Data port 1
@@ -158,8 +156,6 @@ ZX_Spectrum_ULA #(
 	.CPU_WR(		CPU_WR),
 	.CPU_INT(		CPU_INT),
 	.CPU_WAIT(	  	CPU_WAIT),
-
-	.LED(			led),
 
 	.USB0_DP(		USB0_DP),					// USB Data port 0
 	.USB0_DN(		USB0_DN),

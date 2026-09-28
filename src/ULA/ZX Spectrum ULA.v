@@ -4,163 +4,164 @@ module ZX_Spectrum_ULA(
 
 	// External physical connections
 
-	input 				SYS_CLK,					// 28MHz (MASTER)
+	input 						SYS_CLK,								// 28MHz (MASTER)
 
-	input  		[ 5: 0] IO_IN,						// Input  port $FE - AUDIO IN/KB
-	output 		[ 1: 0] IO_OUT,						// Output port $FE - MIC & SPEAKER
+	input  				[ 5: 0] IO_IN,									// Input  port $FE - AUDIO IN/KB
+	output 				[ 1: 0] IO_OUT,									// Output port $FE - MIC & SPEAKER
 
-	output		[ 1: 0] LED,
+	inout						USB0_DP,								// USB ports external connections
+	inout						USB0_DN,
+	inout						USB1_DP,
+	inout						USB1_DN,
 
-	inout				USB0_DP,					// USB ports
-	inout				USB0_DN,
-	inout				USB1_DP,
-	inout				USB1_DN,
-
-	output		[ 2: 0] TMDSp,						// DVI Output
-	output		[ 2: 0] TMDSn,
-	output				TMDSp_clock,
-	output				TMDSn_clock,
+	output				[ 2: 0] TMDSp,									// DVI Output
+	output				[ 2: 0] TMDSn,
+	output						TMDSp_clock,
+	output						TMDSn_clock,
 
 	// Internal system signals
 
-	output				RESET,						// reset signal
+	output						RESET,									// Reset signal to other components
 
-	output				CLK_28,						// 28MHz (SD)
-	output				CLK_14,						// 14MHz (MEM)
-	output				CLK_7,						//  7MHz (CPU)
+	output						CLK_28,									// 28MHz (SD)
+	output						CLK_14,									// 14MHz (MEM)
+	output						CLK_7,									//  7MHz (CPU)
 
-	output reg		 	DMA_RD_ENABLE,				// ULA DMA for video RAM
-	input  reg	[ 7: 0] DMA_DATA_IN,
-	output reg	[15: 0] DMA_ADDRESS,
+	output reg				 	DMA_RD_ENABLE,							// ULA DMA for video RAM
+	input  reg			[ 7: 0] DMA_DATA_IN,
+	output reg			[15: 0] DMA_ADDRESS,
 
-	input				CPU_IORQ,					// CPU Buses
-	input				CPU_MREQ,
-	input				CPU_RD,
-	input				CPU_WR,
-	inout		[ 7: 0] CPU_DATA_BUS,
-	input		[15: 0] CPU_ADDRESS_BUS,
-	output				CPU_INT,
-	output				CPU_WAIT,
+	input						CPU_IORQ,								// CPU Buses
+	input						CPU_MREQ,
+	input						CPU_RD,
+	input						CPU_WR,
+	inout				[ 7: 0] CPU_DATA_BUS,
+	input				[15: 0] CPU_ADDRESS_BUS,
+	output							CPU_INT,
+	output						CPU_WAIT,
 
-	output		[ 7: 0] PAGING						// Paging register
+	output				[ 7: 0] PAGING									// Paging register
 
 );
 
-parameter IO_PORT1		= 0;						// Bit number for port $FE
-parameter IO_PORT2		= 2;						// Bit number for port $FB (paging)
+parameter 	IO_PORT1			= 0;									// Bit number for port $FE
+parameter 	IO_PORT2			= 2;									// Bit number for port $FB (paging)
 
-localparam FALSE		= 1'b0;
-localparam TRUE			= 1'b1;
+localparam	FALSE				= 1'b0;
+localparam	TRUE				= 1'b1;
 
-////////////////////////////////////////////////////////////////////////
-// ULA IO port regs
+	////////////////////////////////////////////////////////////////////////
+	// ULA IO port regs
 
-reg				[ 7: 0]	IO_PORT_ULA;				// ULA's only IO port
-reg				[ 7: 0] IO_PORT_MEM;				// Memory paging register
+reg						[ 7: 0]	IO_PORT_ULA;							// ULA's only IO port
+reg						[ 7: 0] IO_PORT_MEM;							// Memory paging register
 
-assign PAGING = IO_PORT_MEM;
+
+assign		PAGING 				= IO_PORT_MEM;							// Connect the memory paging register to the PAGING output
 
 initial begin
 
-	IO_PORT_ULA = 8'd0;								// Page in SD Rom and 48K ROM at 
-	IO_PORT_MEM = 8'b01010000;						// Default page-in SD card mem
+	IO_PORT_ULA					= 8'd0;									// Page in SD Rom and 48K ROM at 
+	IO_PORT_MEM					= 8'b01010000;							// Default page-in SD card mem
 
 end
 
 ////////////////////////////////////////////////////////////////////////
 // Main clock generator
 
-wire CLK_140;										// For DVI output (internal)
+wire	CLK_140;														// For DVI output (internal)
 
 ZX_Spectrum_CLK zclk(
-	.clkin(SYS_CLK),								// Input clock 28MHz
-	.reset(1'b0),
-	.clkout0(CLK_28),					 			// Output clk 28MHz 
-	.clkout1(CLK_140),					 			// Output clk 140MHz
-	.clkout2(CLK_14),								// Output clk 14MHz
-	.clkout3(CLK_7)						 			// Output clk 7MHz
+	.clkin(						SYS_CLK),								// Input clock 28MHz
+	.reset(						FALSE),
+	.clkout0(					CLK_28),					 			// Output clk 28MHz 
+	.clkout1(					CLK_140),					 			// Output clk 140MHz
+	.clkout2(					CLK_14),								// Output clk 14MHz
+	.clkout3(					CLK_7)						 			// Output clk 7MHz
 );
 
 ////////////////////////////////////////////////////////////////////////
 // DVI output processing
 
-localparam DISPLAY_WIDTH	= 768;		 			// Pixel dimensions of visible display (576p ?)
-localparam DISPLAY_HEIGHT	= 576;
+localparam DISPLAY_WIDTH		= 768;		 							// Pixel dimensions of visible display (576p ?)
+localparam DISPLAY_HEIGHT		= 576;
 
-localparam INT_X_END		= 256;					// 256 @ 28MHz = 32 @ 3.5MHz - interrupt min duration
+localparam INT_X_END			= 256;									// 256 @ 28MHz = 32 @ 3.5MHz - interrupt min duration
 
-localparam DVI_WIDTH		= 895;					// Dimensions (-1) of DVI raster
-localparam DVI_HEIGHT		= 623;
-localparam DVI_HSYNC_START	= 781;					// Horizontal and vertical sync positions
-localparam DVI_HSYNC_END	= 857;
-localparam DVI_VSYNC_START	= 586;
-localparam DVI_VSYNC_END	= 591;
+localparam DVI_WIDTH			= 895;									// Dimensions (-1) of DVI raster
+localparam DVI_HEIGHT			= 623;
+localparam DVI_HSYNC_START		= 781;									// Horizontal and vertical sync positions
+localparam DVI_HSYNC_END		= 857;
+localparam DVI_VSYNC_START		= 586;
+localparam DVI_VSYNC_END		= 591;
 
-localparam SPEC_HSTART		= 128;					// Spectrum pixel display horizontal boundaries
-localparam SPEC_HEND		= 640;					// within the DVI DISPLAY area
-localparam SPEC_VSTART		= 96;					// Spectrum pixel display vertical boundaries
-localparam SPEC_VEND		= 480;
-localparam SPEC_DSTART		= 94;					// Spectrum DMA start and end 1 row before pixel output
-localparam SPEC_DEND		= 478;
+localparam SPEC_HSTART			= 128;									// Spectrum pixel display horizontal boundaries
+localparam SPEC_HEND			= 640;									// within the DVI DISPLAY area
+localparam SPEC_VSTART			= 96;									// Spectrum pixel display vertical boundaries
+localparam SPEC_VEND			= 480;
+localparam SPEC_DSTART			= 94;									// Spectrum DMA start and end 1 row before pixel output
+localparam SPEC_DEND			= 478;
 
-reg				[ 3: 0]	COLOUR_INDEX;				// Current pixel colour index 0-15
+reg						[ 3: 0]	COLOUR_INDEX;							// Current pixel colour index 0-15
 
-reg				[ 7: 0] DVI_RED;					// RGB values for current pixel
-reg 			[ 7: 0] DVI_GREEN;
-reg 			[ 7: 0] DVI_BLUE;
+reg						[ 7: 0] DVI_RED;								// RGB values for current pixel
+reg 					[ 7: 0] DVI_GREEN;
+reg 					[ 7: 0] DVI_BLUE;
 
-reg				[ 9: 0] DVI_X;						// Horizontal and vertical counters
-reg				[ 9: 0] DVI_Y;
+reg						[ 9: 0] DVI_X;									// Horizontal and vertical counters
+reg						[ 9: 0] DVI_Y;
 
-reg						DVI_HSYNC;					// Horizontal and vertical sync signals
-reg 					DVI_VSYNC;
+reg								DVI_HSYNC;								// Horizontal and vertical sync signals
+reg 							DVI_VSYNC;
 
-reg						DVI_ENABLE;					// Flag indicating the visible display is being output at DVI
-reg						DVI_INT;					// Interrupt generation output
+reg								DVI_ENABLE;								// Flag indicating the visible display is being output at DVI
+reg								DVI_INT;								// Interrupt generation output
+reg								DVI_INT_D;								// For DVI_INT edge detection
 
-reg						PIXEL_ENABLE;				// Flags for active TV pixel output vs border output
-reg						PIXEL_READ;					// Indicates pixel data being read from RAM
+reg								PIXEL_ENABLE;							// Flags for active TV pixel output vs border output
+reg								PIXEL_READ;								// Indicates pixel data being read from RAM
 
 initial begin
 
-	DVI_X				= 0;
-	DVI_Y				= 0;
+	DVI_X						= 0;
+	DVI_Y						= 0;
 
-	DVI_HSYNC			= FALSE;
-	DVI_VSYNC			= FALSE;
+	DVI_HSYNC					= FALSE;
+	DVI_VSYNC					= FALSE;
 
-	DVI_ENABLE			= TRUE;
-	DVI_INT				= FALSE;
+	DVI_ENABLE					= TRUE;
+	DVI_INT						= FALSE;
+	DVI_INT_D					= FALSE;
 
-	PIXEL_ENABLE		= FALSE;
-	PIXEL_READ			= FALSE;
+	PIXEL_ENABLE				= FALSE;
+	PIXEL_READ					= FALSE;
 
-	DMA_RD_ENABLE		= FALSE;
+	DMA_RD_ENABLE				= FALSE;
 
 end
 
 ////////////////////////////////////////////////////////////////////////
 // DVI encoder
 
-ZX_Spectrum_DVI dvi(												// DVI encoder IP
+ZX_Spectrum_DVI dvi(													// DVI encoder IP
 
-	.CLK_PIXEL(	 		CLK_28),									// 28MHz DVI pixel clock
-	.CLK_SERIAL( 		CLK_140),									// 140MHz DVI serial bit shift
+	.CLK_PIXEL(	 				CLK_28),								// 28MHz DVI pixel clock
+	.CLK_SERIAL( 				CLK_140),								// 140MHz DVI serial bit shift
 
-	.RESET(		 		1'b1),										// RESET (active low)
+	.RESET(		 				TRUE),									// RESET (active low)
 
-	.DVI_HSYNC(	 		DVI_HSYNC),									// Horizontal and
-	.DVI_VSYNC(	 		DVI_VSYNC),									// Vertical sync
-	.DVI_ENABLE( 		DVI_ENABLE),								// Data enable (displaying pixels)
+	.DVI_HSYNC(			 		DVI_HSYNC),								// Horizontal and
+	.DVI_VSYNC(	 				DVI_VSYNC),								// Vertical sync
+	.DVI_ENABLE( 				DVI_ENABLE),							// Data enable (displaying pixels)
 
-	.DVI_RED(	 		DVI_RED),									// DVI_RED component byte
-	.DVI_GREEN(	 		DVI_GREEN),									// DVI_GREEN component byte
-	.DVI_BLUE(	 		DVI_BLUE),									// DVI_BLUE component byte
+	.DVI_RED(			 		DVI_RED),								// DVI_RED component byte
+	.DVI_GREEN(	 				DVI_GREEN),								// DVI_GREEN component byte
+	.DVI_BLUE(	 				DVI_BLUE),								// DVI_BLUE component byte
 
-	.TMDS_CLK_P( 		TMDSp_clock),								// TMDS +ve clock out
-	.TMDS_CLK_N( 		TMDSn_clock),								// TMDS -ve clock out
-	.TMDS_DATA_P( 		TMDSp),										// TMDS +ve data out (serialized)
-	.TMDS_DATA_N( 		TMDSn)										// TMDS -ve data out (serialized)
+	.TMDS_CLK_P( 				TMDSp_clock),							// TMDS +ve clock out
+	.TMDS_CLK_N( 				TMDSn_clock),							// TMDS -ve clock out
+	.TMDS_DATA_P( 				TMDSp),									// TMDS +ve data out (serialized)
+	.TMDS_DATA_N( 				TMDSn)									// TMDS -ve data out (serialized)
 );
 
 ////////////////////////////////////////////////////////////////////////
@@ -168,48 +169,16 @@ ZX_Spectrum_DVI dvi(												// DVI encoder IP
 
 ZX_Spectrum_PAL pal(
 
-	.COLOUR_INDEX(		COLOUR_INDEX),
-	.RED(		  		DVI_RED),
-	.GREEN(				DVI_GREEN),
-	.BLUE(				DVI_BLUE)
+	.COLOUR_INDEX(				COLOUR_INDEX),
+	.RED(		  				DVI_RED),
+	.GREEN(						DVI_GREEN),
+	.BLUE(						DVI_BLUE)
 );
-
-////////////////////////////////////////////////////////////////////////
-// Generate DVI raster
-
-always @(posedge CLK_28) begin										// DVI Pixel clock
-
-	DVI_X	 		<= DVI_X < DVI_WIDTH ? DVI_X + 10'd1 : 10'd0;	// Column/Row counters
-
-	if (DVI_X		== DVI_WIDTH) begin 
-
-		DVI_Y		<= DVI_Y < DVI_HEIGHT ? DVI_Y + 10'd1 : 10'd0;
-
-	end
-
-	DVI_INT			<=  (DVI_Y == 0 && DVI_X < INT_X_END);
-
-	DVI_ENABLE		<=  (DVI_X < DISPLAY_WIDTH)	&& (DVI_Y < DISPLAY_HEIGHT);			// Set DVI_ENABLE when counters within visible region
-
-	DVI_HSYNC		<=  (DVI_X > DVI_HSYNC_START) && (DVI_X < DVI_HSYNC_END);			// Period where horizontal sync is active
-
-	DVI_VSYNC		<=  (DVI_Y > DVI_VSYNC_START) && (DVI_Y < DVI_VSYNC_END);			// and vertical sync
-
-	PIXEL_ENABLE	<=  (DVI_Y >= SPEC_VSTART && DVI_Y < SPEC_VEND) &&					// Flag for output pixels / border colour
-						(DVI_X >= SPEC_HSTART && DVI_X < SPEC_HEND);
-
-	PIXEL_READ		<=  (DVI_Y >= SPEC_VSTART && DVI_Y < SPEC_VEND) &&					// Flag to begin pixel read from buffer - 1 pixel before output enable
-						(DVI_X >= SPEC_HSTART - 2 && DVI_X < SPEC_HEND - 2);
-
-	DMA_RD_ENABLE	<=  (DVI_Y >= SPEC_DSTART && DVI_Y < SPEC_DEND) &&					// DMA active 1 SPECTRUM pixel row before display output
-						(DVI_X >= SPEC_HSTART && DVI_X < SPEC_HEND);
-
-end
 
 ////////////////////////////////////////////////////////////////////////
 // Flash delay counter, uses 50Hz interrupt signal as clock
 
-reg				[ 4: 0]	FRAMES;										// Count frames for flash period. Bit 4 = flash state
+reg						[ 4: 0]	FRAMES;									// Count frames for flash period. Bit 4 = flash state
 
 initial begin
 
@@ -217,22 +186,56 @@ initial begin
 
 end
 
-always @ (posedge DVI_INT) begin									// Use interrupt signal to increment count
+////////////////////////////////////////////////////////////////////////
+// Generate DVI raster
 
-	FRAMES <= FRAMES + 5'd1;
+always @(posedge CLK_28) begin											// DVI Pixel clock
+
+	DVI_X	 		<= DVI_X < DVI_WIDTH ? DVI_X + 10'd1 : 10'd0;		// Column/Row counters
+
+	if (DVI_X == DVI_WIDTH) begin 
+
+		DVI_Y		<= DVI_Y < DVI_HEIGHT ? DVI_Y + 10'd1 : 10'd0;
+
+	end
+
+	DVI_INT			<=  (DVI_Y == 0 && DVI_X < INT_X_END);
+
+	DVI_INT_D		<=  DVI_INT;
+
+	if (DVI_INT && ~DVI_INT_D) begin									// Rising edge of DVI_INT
+		
+		FRAMES <= FRAMES + 5'd1;
+
+	end
+
+	DVI_ENABLE		<=  (DVI_X < DISPLAY_WIDTH)	&& (DVI_Y < DISPLAY_HEIGHT);		// Set DVI_ENABLE when counters within visible region
+
+	DVI_HSYNC		<=  (DVI_X > DVI_HSYNC_START) && (DVI_X < DVI_HSYNC_END);		// Period where horizontal sync is active
+
+	DVI_VSYNC		<=  (DVI_Y > DVI_VSYNC_START) && (DVI_Y < DVI_VSYNC_END);		// and vertical sync
+
+	PIXEL_ENABLE	<=  (DVI_Y >= SPEC_VSTART && DVI_Y < SPEC_VEND) &&				// Flag for output pixels / border colour
+						(DVI_X >= SPEC_HSTART && DVI_X < SPEC_HEND);
+
+	PIXEL_READ		<=  (DVI_Y >= SPEC_VSTART && DVI_Y < SPEC_VEND) &&				// Flag to begin pixel read from buffer - 1 pixel before output enable
+						(DVI_X >= SPEC_HSTART - 2 && DVI_X < SPEC_HEND - 2);
+
+	DMA_RD_ENABLE	<=  (DVI_Y >= SPEC_DSTART && DVI_Y < SPEC_DEND) &&				// DMA active 1 SPECTRUM pixel row before display output
+						(DVI_X >= SPEC_HSTART && DVI_X < SPEC_HEND);
 
 end
 
 ////////////////////////////////////////////////////////////////////////
 // SPECTRUM video processing
 
-reg				[ 7: 0] PIX_BUF[0:63];								// Buffer 2 rows of pixel data
-reg				[ 7: 0] ATT_BUF[0:63];								// Buffer 2 rows of attribute data
+reg						[ 7: 0] PIX_BUF[0:63];							// Buffer 2 rows of pixel data
+reg						[ 7: 0] ATT_BUF[0:63];							// Buffer 2 rows of attribute data
 
-reg				[ 7: 0]	PIX;
-reg				[ 7: 0]	ATT;
+reg						[ 7: 0]	PIX;
+reg						[ 7: 0]	ATT;
 
-reg				[ 7: 0]	PIXELS;										// Count the 256 pixels in each row
+reg						[ 7: 0]	PIXELS;									// Count the 256 pixels in each row
 
 initial begin
 
@@ -247,11 +250,11 @@ always @ (posedge CLK_14) begin
 
 	if (PIXEL_READ) begin
 
-		PIXELS <= PIXELS + 8'd1;									// Count the 256 pixels of each row
+		PIXELS 	<= PIXELS + 8'd1;										// Count the 256 pixels of each row
 
-		if (PIXELS[2:0] == 0) begin									// Every 8 pixels pick up new bytes from the buffer
+		if (PIXELS[2:0] == 0) begin										// Every 8 pixels pick up new bytes from the buffer
 
-			ATT <= ATT_BUF[ { ~BYTES[8], PIXELS[7:3] } ];			// ~BYTES[8] is the select for the 2 buffers. The one NOT being used to fill from RAM
+			ATT <= ATT_BUF[ { ~BYTES[8], PIXELS[7:3] } ];				// ~BYTES[8] is the select for the 2 buffers. The one NOT being used to fill from RAM
 			PIX <= PIX_BUF[ { ~BYTES[8], PIXELS[7:3] } ];
 
 		end
@@ -262,21 +265,21 @@ always @ (posedge CLK_14) begin
 		end
 	end
 
-	if (PIXEL_ENABLE)												// Calculate the colour index from Attribute/pixel on/off
+	if (PIXEL_ENABLE)													// Calculate the colour index from Attribute/pixel on/off
 		COLOUR_INDEX <= { ATT[6], (PIX[7] ^ (ATT[7] & FRAMES[4])) ? ATT[2:0] : ATT[5:3] };
 	else
-		COLOUR_INDEX <= IO_PORT_ULA[2:0];							// Border colour from IO port reg
+		COLOUR_INDEX <= IO_PORT_ULA[2:0];								// Border colour from IO port reg
 
 end
 
 ////////////////////////////////////////////////////////////////////////
 // Read video RAM and fill buffer
 
-reg				[15: 0]	BYTES;										// This counts through 8K video ram + low bit state
+reg						[15: 0]	BYTES;									// This counts through 8K video ram + low bit state
 
 // Bits: 15:4,	 - 12 bit memory offset (0-8191)
 // 		 3 		 - 1 = Memory is being accessed. Used for contention compatibility
-//		 2:0	 - 0 = Set DMA address for even pixel byte			// State for reading pixel and attribute data
+//		 2:0	 - 0 = Set DMA address for even pixel byte
 //				 - 1 = Read pixel
 //				 - 2 = Set DMA address for even attribute byte
 //				 - 3 = Read attribute
@@ -358,14 +361,14 @@ assign CPU_INT		= ~DVI_INT;														// CPU Interrupt is active low
 // USB
 
 typedef struct packed {
-	reg	[ 0: 7][ 4: 0]BIT;
+	reg			[ 0: 7][ 4: 0] BIT;												// 8 rows of 5 bits, one bit for each key on the keyboard
 } KB_TYPE;
 
 KB_TYPE KBIT;
 
-reg KCAP;
+reg KCAP;																// Flag for Caps Lock and Symbols shift
 reg KSYM;
-reg [39: 0] KBD_DATA [ 0:45];
+reg  [39: 0] KBD_DATA [ 0:45];											// Lookup table for USB keyboard data
 
 initial begin
 
@@ -395,62 +398,66 @@ function automatic [ 4: 0] USB_IO(
 
 endfunction
 
-wire CLK_12;																		// USB clock
+wire CLK_12;															// USB clock
 
-ZX_Spectrum_USB_CLK uclk (
-	.clkin(		SYS_CLK),
-	.clkout0(	CLK_12)
+ZX_Spectrum_USB_CLK uclk (												// Another clock generator for USB
+	.clkin(						SYS_CLK),
+	.clkout0(					CLK_12)
 );
 
-reg [ 1: 0] USB0_TYP;
-reg			USB0_REPORT;
-reg			USB0_ERR;
+////////////////////////////////////////////////////////////////////////////
+// USB port 0
 
-reg [ 7: 0] USB0_KMOD;
-reg [ 7: 0] USB0_KEY[0:3];
+reg						[ 1: 0] USB0_TYP;								// Info from USB module
+reg								USB0_REPORT;
+reg								USB0_ERR;
 
-reg [15: 0] USB0_GAME;
+reg 					[ 7: 0] USB0_KMOD;								// Key modifier byte from USB module
+reg						[ 7: 0] USB0_KEY[0:3];							// Stores up to 4 simultaneous key presses
+
+reg						[15: 0] USB0_GAME;								// Game controller data
 
 ZX_Spectrum_USB usb0 (
 
-	.USB_CLK(		CLK_12),
-	.USB_DP(		USB0_DP),
-	.USB_DN(		USB0_DN),
+	.USB_CLK(					CLK_12),
+	.USB_DP(					USB0_DP),								// External connections for USB port 0
+	.USB_DN(					USB0_DN),
 
-	.USB_TYP(		USB0_TYP),
-	.USB_ERR(		USB0_ERR),
-	.USB_REPORT(	USB0_REPORT),
-	.USB_KMOD(	  	USB0_KMOD),
-	.USB_KEY(		USB0_KEY),
-	.USB_GAME(	  	USB0_GAME)
+	.USB_TYP(					USB0_TYP),								// Decoded data
+	.USB_ERR(					USB0_ERR),
+	.USB_REPORT(				USB0_REPORT),
+	.USB_KMOD(	  				USB0_KMOD),
+	.USB_KEY(					USB0_KEY),
+	.USB_GAME(	  				USB0_GAME)
 );
 
-reg [ 1: 0] USB1_TYP;
-reg		 USB1_REPORT;
-reg		 USB1_ERR;
+////////////////////////////////////////////////////////////////////////////
+// USB port 1
 
-reg [ 7: 0] USB1_KMOD;
-reg [ 7: 0] USB1_KEY[0:3];
+reg						[ 1: 0] USB1_TYP;
+reg								USB1_REPORT;
+reg								USB1_ERR;
 
-reg [15: 0] USB1_GAME;
+reg						[ 7: 0] USB1_KMOD;
+reg						[ 7: 0] USB1_KEY[0:3];
+
+reg						[15: 0] USB1_GAME;
 
 ZX_Spectrum_USB usb1 (
 
-	.USB_CLK(		CLK_12),
-	.USB_DP(		USB1_DP),
-	.USB_DN(		USB1_DN),
+	.USB_CLK(					CLK_12),
+	.USB_DP(					USB1_DP),
+	.USB_DN(					USB1_DN),
 
-	.USB_TYP(		USB1_TYP),
-	.USB_ERR(		USB1_ERR),
-	.USB_REPORT(	USB1_REPORT),
-	.USB_KMOD(	 	USB1_KMOD),
-	.USB_KEY(		USB1_KEY),
-	.USB_GAME(		USB1_GAME)
+	.USB_TYP(					USB1_TYP),
+	.USB_ERR(					USB1_ERR),
+	.USB_REPORT(				USB1_REPORT),
+	.USB_KMOD(				 	USB1_KMOD),
+	.USB_KEY(					USB1_KEY),
+	.USB_GAME(					USB1_GAME)
 );
 
-assign LED = USB1_TYP;
-
-assign KCAP =	USB1_KMOD & 8'h22 ? 1'b1 : 1'b0;
+assign KCAP =	USB1_KMOD & 8'h22 ? 1'b1 : 1'b0;						// Keyboard in port 1 only
 assign KSYM =	USB1_KMOD & 8'h11 ? 1'b1 : 1'b0;
 assign KBIT =	KBD_DATA[ { KCAP, USB1_KEY[0][6:0] }] |
 				KBD_DATA[ { KCAP, USB1_KEY[1][6:0] }] |
