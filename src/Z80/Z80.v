@@ -926,26 +926,51 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		endcase
 	end
 
-	PLA_LDARIA: begin													// M1(5) LD I/R,A - LD A,I/R
+	PLA_LDRIA: begin													// M1(5) LD I/R,A
 
 		case(FSM_STATE)
 
 		STATE_M1T4H: begin
 
-			case(OPCODE_REG[4:3])
-				2'b00: `REG_I	<= `CUR_A;
-				2'b01: `CUR_A	<= `REG_I;
-				2'b10: `REG_R	<= `CUR_A;
-				2'b11: `CUR_A	<= `REG_R;
-			endcase
+			if (OPCODE_REG[3]) begin
+				 `REG_R	<= `CUR_A;
+			end else begin
+				 `REG_I	<= `CUR_A;
+			end
+
+        end
+
+        STATE_M1T4L: begin												// Timing
+            FSM_NEXT_STATE.T	<= STATE_T5H;
+        end
+
+        STATE_M1T5L: begin
+            FSM_LAST_M			<= TRUE;
+        end
+
+		endcase
+	end
+
+	PLA_LDARI: begin													// M1(5) LD I/R,A - LD A,I/R
+
+		case(FSM_STATE)
+
+		STATE_M1T4H: begin
+			`CUR_A	<= OPCODE_REG[3] ? `REG_R : `REG_I;                 // Set A from I/R regs
 		end
 
 		STATE_M1T4L: begin												// Extra cycle to set P
 			FSM_NEXT_STATE.T	<= STATE_T5H;
 		end
 
+		STATE_M1T5H: begin
+			ALU_OPCODE			<= ALU_FLG;                             // Use ALU to set flags
+			ALU_OP1				<= `CUR_A;
+			ALU_INFLAGS			<= `CUR_F;
+		end
+
 		STATE_M1T5L: begin
-		   `CUR_F[FLAG_P] 		<= IFF2;
+		   `CUR_F		 		<= { `CUR_F[7:6], 3'b0, IFF2, 1'b0, `CUR_F[FLAG_C] };
 			FSM_LAST_M			<= TRUE;								//	Complete
 		end
 
