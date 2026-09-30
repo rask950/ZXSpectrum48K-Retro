@@ -457,15 +457,15 @@ ZX_Spectrum_USB usb1 (
 	.USB_GAME(					USB1_GAME)
 );
 
-assign KCAP =	USB1_KMOD & 8'h22 ? 1'b1 : 1'b0;						// Keyboard in port 1 only
-assign KSYM =	USB1_KMOD & 8'h11 ? 1'b1 : 1'b0;
-assign KBIT =	KBD_DATA[ { KCAP, USB1_KEY[0][6:0] }] |
-				KBD_DATA[ { KCAP, USB1_KEY[1][6:0] }] |
-				KBD_DATA[ { KCAP, USB1_KEY[2][6:0] }] |
-				KBD_DATA[ { KCAP, USB1_KEY[3][6:0] }];
+assign KCAP			=	USB1_KMOD & 8'h22 ? 1'b1 : 1'b0;						// Keyboard in port 1 only
+assign KSYM			=	USB1_KMOD & 8'h11 ? 1'b1 : 1'b0;
+assign KBIT			=	KBD_DATA[ { KCAP, USB1_KEY[0][6:0] }] |
+						KBD_DATA[ { KCAP, USB1_KEY[1][6:0] }] |
+						KBD_DATA[ { KCAP, USB1_KEY[2][6:0] }] |
+						KBD_DATA[ { KCAP, USB1_KEY[3][6:0] }];
 
-assign CPU_DATA_BUS = CPU_ADDRESS_BUS[7:0] == 8'd31 && ~(CPU_IORQ | CPU_RD) ? USB1_KMOD : 8'bz;
+assign CPU_DATA_BUS	= CPU_ADDRESS_BUS[7:0] == 8'd31 && ~(CPU_IORQ | CPU_RD) ? USB1_KMOD : 8'bz;
 
-assign RESET = USB1_KMOD[1] & USB1_KMOD[2] & USB1_KMOD[6];
+assign RESET		= USB1_KMOD[1] & USB1_KMOD[2] & USB1_KMOD[6];
 
 endmodule
