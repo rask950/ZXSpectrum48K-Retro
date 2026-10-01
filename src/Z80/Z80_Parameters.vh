@@ -189,7 +189,8 @@ parameter PLA_LDR_N	  = 12'bzz0000zzz110;			// LD r,n
 parameter PLA_LDA_MM  = 12'bzz000011z010;			// LD A,(nn) (bit3=0)/LD (nn),A (bit3=1)
 parameter PLA_LDA_RR  = 12'bzz00000zz010;			// LD A,(rr) (bit3=0)/LD (rr),A (bit3=1)
 
-parameter PLA_LDARIA  = 12'b0010010zz111;			// LD I,A (00)/LD A,I (10)/LD R,A (01)/LD A,R (11)
+parameter PLA_LDARI   = 12'b00100101z111;			// LD A,I (0)/LD A,R (1)
+parameter PLA_LDRIA   = 12'b00100100z111;			// LD I,A (0)/LD R,A (1)
 
 // 16 bit load
 

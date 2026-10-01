@@ -138,7 +138,7 @@ SLA8 sla0 (
 	.PART_FLAGS(	PART_FLAGS)
 );
 
-SLA8 sll0 (
+SLL8 sll0 (
 	.OP1(			OP1),
 	.ENABLE(		OPCODE == ALU_SLL),
 	.PART_RESULT(	PART_RESULT),
@@ -269,6 +269,18 @@ module SLA8 (
 );
 
 assign PART_RESULT	= ENABLE ? { OP1[6:0],	1'b0 } : 8'bz;
+assign PART_FLAGS	= ENABLE ? { OP1[7],	3'b0 } : 4'bz;
+
+endmodule
+
+module SLL8 (
+	input		[ 7: 0]	OP1,
+	input  				ENABLE,
+	output		[ 7: 0]	PART_RESULT,
+	output		[ 3: 0]	PART_FLAGS
+);
+
+assign PART_RESULT	= ENABLE ? { OP1[6:0],	1'b1 } : 8'bz;
 assign PART_FLAGS	= ENABLE ? { OP1[7],	3'b0 } : 4'bz;
 
 endmodule
