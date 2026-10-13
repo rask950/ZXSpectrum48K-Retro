@@ -9,7 +9,7 @@ module Z80_INCREMENTER(
 	localparam FALSE = 1'b0;
 	localparam  TRUE = 1'b1;
 
-	wire		[ 1: 0]	c0;											// Carry out from one stage to next
+	wire		[ 1: 0]	c0;											// Carry out for DEC/INC from one stage to next
 	wire		[ 1: 0]	c1;
 	wire		[ 1: 0]	c2;
 	wire		[ 1: 0]	c3;

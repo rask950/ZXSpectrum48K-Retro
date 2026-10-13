@@ -279,8 +279,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		RD			 			<= INACTIVE;
 		MREQ					<= INACTIVE;
 		RFSH					<= ACTIVE;
-		INC_DIR					<= TRUE;								// Set incrementer to add 7 bits
-		INC_BITS				<= FALSE;
+		{ INC_DIR, INC_BITS }	<= { TRUE, FALSE };						// Set incrementer to add 7 bits
 		FSM_NEXT_STATE			<= STATE_M1T3L;							// Remainder follows the usual M1
 	end
 
@@ -312,7 +311,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 	STATE_MRT3L: begin													// RD, MREQ inactive
 		RD			 			<= INACTIVE;				 			// Instruction defines next state
-		MREQ					<= INACTIVE;
+		MREQ					<= INACTIVE;							// Data bus can be read here
 	end
 
 	STATE_MRT4H: begin
@@ -369,7 +368,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		FSM_NEXT_STATE.T		<= STATE_T1L;
 	end
 
-	STATE_IRT1L: begin
+	STATE_IRT1L: begin													// Data but initialized elsewhere
 		FSM_NEXT_STATE.T		<= STATE_T2H;
 	end
 
@@ -389,7 +388,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 	STATE_IRT3L: begin													// Execute T3 again if WAIT is active
 		FSM_NEXT_STATE.T		<= WAIT ? STATE_T4H
-											: STATE_T3H;
+										: STATE_T3H;
 	end
 
 	STATE_IRT4H: begin
@@ -397,8 +396,8 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 	end
 
 	STATE_IRT4L: begin													// IORQ and RD inactive
-		IORQ					<= INACTIVE;							// Instruction defines next state
-		RD						<= INACTIVE;
+		IORQ					<= INACTIVE;							// Data bus can be read here
+		RD						<= INACTIVE;							// Instruction defines next state
 	end
 
 	////////////////////////////////////////////////////////////////////////
@@ -465,9 +464,8 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 	
 	if (FSM_LAST_M) begin												// Current instrution complete
 
-		IX						<= FALSE;								// Clear prefixes
-		IY			 			<= FALSE;
-		BITS					<= FALSE;
+		{ IX, IY, BITS }		<= { FALSE, FALSE, FALSE };				// Clear prefixes
+
 		FSM_LAST_M				<= FALSE;
 
 		if (~NMI) begin
@@ -535,7 +533,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 
 		STATE_MR1T1H: begin												// MR(3) Prepare to read displacement
-			ADDRESS_BUS			<=`REG_PC;
+			ADDRESS_BUS				<=`REG_PC;
 			{ INC_DIR, INC_BITS}	<= { TRUE, TRUE };					// Set incrementer to add 16 bits
 		end
 
@@ -582,7 +580,6 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		end
 
 
-
 		STATE_MR1T1H: begin												// MR(3) Read displacement
 			ADDRESS_BUS			<=`REG_PC;
 			{ INC_DIR, INC_BITS}	<= { TRUE, TRUE };					// Set incrementer to add 16 bits
@@ -593,7 +590,6 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 			ALU_OP2				<= DATA_BUS;							// Pick up displacement byte
 			FSM_NEXT_STATE		<= STATE_GN1T1H;						// Now start a new cycle for calculation
 		end
-
 
 
 		STATE_GN1T1H: begin												// MG(5) For displacement and timing purposes
@@ -626,7 +622,6 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_GN1T5L:
 			FSM_NEXT_STATE		<= STATE_MR2T1H;						// Move on to memory read
-
 
 
 		STATE_MR2T1H: begin												// MR(3) Read byte
@@ -1751,7 +1746,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 					ALU_OP2[3:0]<= 8'h6;
 				end
 				if (`CUR_F[FLAG_C] || `CUR_A[7:4] > 4'd9) begin			// Test upper nibble of A
-				ALU_OP2[7:4]	<= 8'h6;
+					ALU_OP2[7:4]	<= 8'h6;
 				end
 			end	
 		end

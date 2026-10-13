@@ -2,7 +2,7 @@
 `timescale 1ns / 1ps
 
 // FLAGS  7   6   5   4   3   2   1   0
-//	  S   Z       H      P/V  N   C
+//		  S   Z       H      P/V  N   C
 
 module tb_alu (
 	input sys_clk
@@ -18,23 +18,25 @@ module tb_alu (
 	reg			[ 7: 0]	ALU_OUTFLAGS;								// Flags out
 
 	initial begin
-		ALU_OPCODE = ALU_CP;
-		ALU_OP1 = 4;
-		ALU_OP2 = 4;
+		ALU_OPCODE = ALU_ADD;
+		ALU_OP1 = 14;
+		ALU_OP2 = 8'hF2;
 		ALU_INFLAGS = 0;
-		ALU_RESULT = 0;
-		ALU_OUTFLAGS = 0;
 
-		#10 $monitor("result %d ($%h) flags: $%h", ALU_RESULT, ALU_RESULT, ALU_OUTFLAGS );
+		#1 $display("operation %d + %d", ALU_OP1, 	ALU_OP2);
+		#10 $monitor("alu [%d] %h %h - %h %b", ZALU.STATE, ZALU.OP1_HALF, ZALU.OP2_HALF, ZALU.PART_RESULT, ZALU.PART_FLAGS );
+		#10 $monitor("result %h %b", ALU_RESULT, ALU_OUTFLAGS );
 	end
 
 	Z80_ALU ZALU (
-		.opcode(		ALU_OPCODE),
-		.op1(			ALU_OP1),
-		.op2(			ALU_OP2),
-		.inflags(		ALU_INFLAGS),
-		.result(		ALU_RESULT),
-		.outflags(		ALU_OUTFLAGS)
+		.CLK(			sys_clk),
+		.RESET(			1'b0),
+		.OPCODE(		ALU_OPCODE),
+		.OP1(			ALU_OP1),
+		.OP2(			ALU_OP2),
+		.INFLAGS(		ALU_INFLAGS),
+		.RESULT(		ALU_RESULT),
+		.OUTFLAGS(		ALU_OUTFLAGS)
 	);
 
 endmodule
