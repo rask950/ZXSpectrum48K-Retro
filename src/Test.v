@@ -1,0 +1,65 @@
+
+
+STATE_M1T3L: begin
+	FSM_NEXT_STATE		<= STATE_M1T4H;
+end
+
+STATE_M1T4H: begin
+end
+
+STATE_M1T4L: begin
+	FSM_NEXT_STATE		<= STATE_GN1T1H;
+end
+
+
+
+STATE_GN1T1H: begin
+end
+
+STATE_GN1T1L: begin
+	FSM_NEXT_STATE.T	<= STATE_T2H;
+end
+
+STATE_GN1T2H: begin
+end
+
+STATE_GN1T2L: begin
+	FSM_NEXT_STATE.T	<= STATE_T3H;
+end
+
+STATE_GN1T3H: begin
+end
+
+STATE_GN1T3L: begin
+	FSM_NEXT_STATE.T	<= STATE_T4H;
+end
+
+STATE_GN1T4H: begin
+end
+
+STATE_GN1T4L: begin
+	FSM_NEXT_STATE.T	<= STATE_GN1T1H;
+end
+
+
+
+STATE_GN2T1H: begin
+end
+
+STATE_GN2T1L: begin
+	FSM_NEXT_STATE.T	<= STATE_T2H;
+end
+
+STATE_GN2T2H: begin
+end
+
+STATE_GN2T2L: begin
+	FSM_NEXT_STATE.T	<= STATE_T3H;
+end
+
+STATE_GN2T3H: begin
+end
+
+STATE_GN2T3L: begin
+	FSM_LAST_M			<= TRUE;
+end
