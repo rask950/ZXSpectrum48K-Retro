@@ -35,27 +35,23 @@ wire		[ 3: 0]	PART_RESULT;							// Partial result from the ALU operations
 wire		[ 1: 0]	PART_FLAGS;								// Partial flags C, V from ALU operations
 
 initial begin
-	STATE = STATE_IDLE;
+	STATE = STATE_LOWER;
 end
 
-always @(posedge CLK) begin
+always @(*) begin
 
 	case(STATE)
 
-		STATE_IDLE: begin
-			if (OPCODE != ALU_NONE)	STATE <= STATE_LOWER;
-		end
-
 		STATE_LOWER: begin
-			STATE 	<= STATE_UPPER;
+			STATE 	= STATE_UPPER;
 		end
 		
 		STATE_UPPER: begin
-			STATE 	<= STATE_RESULT;
+			STATE 	= STATE_RESULT;
 		end
 		
 		STATE_RESULT: begin
-			STATE 	<= STATE_IDLE;
+			STATE 	= STATE_LOWER;
 		end
 
 	endcase
@@ -64,21 +60,21 @@ always @(posedge CLK) begin
 		ALU_AL: begin
 			case(STATE)
 				STATE_LOWER: begin
-					OP1_HALF <= OP1[3:0];
-					OP2_HALF <= OP2[3:0];
-					OP_CARRY <= OPCODE == ALU_ADC | OPCODE == ALU_SBC ? INFLAGS[FLAG_C] : 1'b0;
+					OP1_HALF = OP1[3:0];
+					OP2_HALF = OP2[3:0];
+					OP_CARRY = OPCODE == ALU_ADC | OPCODE == ALU_SBC ? INFLAGS[FLAG_C] : 1'b0;
 				end
 				STATE_UPPER: begin
-					RESULT_LOWER 	 <= PART_RESULT;
-					H_FLAG			 <= PART_FLAGS[1];
+					RESULT_LOWER 	 = PART_RESULT;
+					H_FLAG			 = PART_FLAGS[1];
 
-					OP1_HALF <= OP1[7:4];
-					OP2_HALF <= OP2[7:4];
-					OP_CARRY <= PART_FLAGS[1];
+					OP1_HALF = OP1[7:4];
+					OP2_HALF = OP2[7:4];
+					OP_CARRY = PART_FLAGS[1];
 				end
 				STATE_RESULT: begin
-					OUTFLAGS <= { S_FLAG, Z_FLAG, 1'b0, H_FLAG, 1'b0, PART_FLAGS[1] ^ PART_FLAGS[0], 1'b0, PART_FLAGS[1] };
-					RESULT	 <= OPCODE == ALU_CP ? OP1 : { PART_RESULT, RESULT_LOWER };
+					OUTFLAGS = { S_FLAG, Z_FLAG, 1'b0, H_FLAG, 1'b0, PART_FLAGS[1] ^ PART_FLAGS[0], OPCODE == ALU_SUB | OPCODE == ALU_SBC, PART_FLAGS[1] };
+					RESULT	 = OPCODE == ALU_CP ? OP1 : { PART_RESULT, RESULT_LOWER };
 				end
 			endcase	
 		end
@@ -96,7 +92,7 @@ ADD4 add_instance (
 	.OP1(			OP1_HALF),
 	.OP2(			OP2_HALF),
 	.CARRY(			OP_CARRY),
-	.ENABLE(		OPCODE == ALU_ADD),
+	.ENABLE(		OPCODE == ALU_ADD | OPCODE == ALU_ADC),
 	.PART_RESULT(	PART_RESULT),
 	.PART_FLAGS(	PART_FLAGS)
 );
@@ -105,7 +101,7 @@ SUB4 sub_instance (
 	.OP1(			OP1_HALF),
 	.OP2(			OP2_HALF),
 	.CARRY(			OP_CARRY),
-	.ENABLE(		OPCODE == ALU_SUB),
+	.ENABLE(		OPCODE == ALU_SUB | OPCODE == ALU_SBC),
 	.PART_RESULT(	PART_RESULT),
 	.PART_FLAGS(	PART_FLAGS)
 );

@@ -51,7 +51,7 @@ localparam ALU_BIT	= 5'b11000;
 localparam ALU_SET	= 5'b11001;
 localparam ALU_RES	= 5'b11010;
 
-localparam ALU_BIT	= 5'b11zzz;				// Match bit operations
+localparam ALU_BSR	= 5'b11zzz;				// Match BIT/SET/RESET operations
 
 localparam ALU_FLG	= 5'b11110;				// Pseudo-operation for setting flags only
 localparam ALU_NONE	= 5'b11111;				// No operation
