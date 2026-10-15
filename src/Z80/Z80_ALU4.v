@@ -43,42 +43,49 @@ always @(*) begin
 	case(STATE)
 
 		STATE_LOWER: begin
+
+			OP1_HALF = OP1[3:0];
+			OP2_HALF = OP2[3:0];
+
+			casez(OPCODE)
+				ALU_ARI: begin
+					OP_CARRY = OPCODE[0] & INFLAGS[FLAG_C];			// Carry flag if SBC/ADC
+				end
+				ALU_ALO: begin
+					OP_CARRY = 1'b0
+				end
+				ALU_DAA: begin
+					OP_CARRY = INFLAGS[FLAG_H];
+				end
+				ALU_SHL: begin
+					OP_CARRY = 1'b0;
+				end
+				ALU_SHR: begin
+					OP_CARRY = 1'b0;
+				end
+			endcase 
+			
 			STATE 	= STATE_UPPER;
 		end
 		
 		STATE_UPPER: begin
+			RESULT_LOWER 	 = PART_RESULT;
+			H_FLAG			 = PART_FLAGS[1];
+
+			OP1_HALF = OP1[7:4];
+			OP2_HALF = OP2[7:4];
+			OP_CARRY = PART_FLAGS[1];
 			STATE 	= STATE_RESULT;
 		end
 		
 		STATE_RESULT: begin
+			OUTFLAGS = { S_FLAG, Z_FLAG, 1'b0, H_FLAG, 1'b0, PART_FLAGS[1] ^ PART_FLAGS[0], OPCODE == ALU_SUB | OPCODE == ALU_SBC, PART_FLAGS[1] };
+			RESULT	 = OPCODE == ALU_CP ? OP1 : { PART_RESULT, RESULT_LOWER };
 			STATE 	= STATE_LOWER;
 		end
 
 	endcase
 	
-	case(OPCODE)
-		ALU_AL: begin
-			case(STATE)
-				STATE_LOWER: begin
-					OP1_HALF = OP1[3:0];
-					OP2_HALF = OP2[3:0];
-					OP_CARRY = OPCODE == ALU_ADC | OPCODE == ALU_SBC ? INFLAGS[FLAG_C] : 1'b0;
-				end
-				STATE_UPPER: begin
-					RESULT_LOWER 	 = PART_RESULT;
-					H_FLAG			 = PART_FLAGS[1];
-
-					OP1_HALF = OP1[7:4];
-					OP2_HALF = OP2[7:4];
-					OP_CARRY = PART_FLAGS[1];
-				end
-				STATE_RESULT: begin
-					OUTFLAGS = { S_FLAG, Z_FLAG, 1'b0, H_FLAG, 1'b0, PART_FLAGS[1] ^ PART_FLAGS[0], OPCODE == ALU_SUB | OPCODE == ALU_SBC, PART_FLAGS[1] };
-					RESULT	 = OPCODE == ALU_CP ? OP1 : { PART_RESULT, RESULT_LOWER };
-				end
-			endcase	
-		end
-	endcase
 end
 
 FLAGSETTER flag_instance (
@@ -101,7 +108,7 @@ SUB4 sub_instance (
 	.OP1(			OP1_HALF),
 	.OP2(			OP2_HALF),
 	.CARRY(			OP_CARRY),
-	.ENABLE(		OPCODE == ALU_SUB | OPCODE == ALU_SBC),
+	.ENABLE(		OPCODE == ALU_SUB | OPCODE == ALU_SBC | OPCODE == ALU_CP),
 	.PART_RESULT(	PART_RESULT),
 	.PART_FLAGS(	PART_FLAGS)
 );

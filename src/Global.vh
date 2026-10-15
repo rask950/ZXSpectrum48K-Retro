@@ -23,17 +23,16 @@ localparam ALU_ADD	= 5'b00000;
 localparam ALU_ADC	= 5'b00001;				// C in
 localparam ALU_SUB	= 5'b00010;
 localparam ALU_SBC	= 5'b00011;				// C in
+localparam ALU_ARI	= 5'b000zz;				// Match arithmetic opcodes
 
 localparam ALU_AND	= 5'b00100;
 localparam ALU_XOR	= 5'b00101;
 localparam ALU_OR	= 5'b00110;
 localparam ALU_CP	= 5'b00111;
+localparam ALU_ALO	= 5'b001zz;				// Match logical/compare opcodes
 
 localparam ALU_DAA	= 5'b01000;				// C and H
-localparam ALU_NEG	= 5'b01001;
-localparam ALU_CPL	= 5'b01010;
 
-localparam ALU_AL	= 5'b0zzzz;				// Match arithmetic/logic/extended opcodes
 
 localparam ALU_RLC	= 5'b10000;
 localparam ALU_RRC	= 5'b10001;
