@@ -48,20 +48,21 @@ always @(*) begin
 			OP2_HALF = OP2[3:0];
 
 			casez(OPCODE)
-				ALU_ARI: begin
+
+				ALU_ARI: begin										// Arithmetic operations (ADD, ADC, SUB, SBC, CP)
 					OP_CARRY = OPCODE[0] & INFLAGS[FLAG_C];			// Carry flag if SBC/ADC
 				end
 				ALU_ALO: begin
-					OP_CARRY = 1'b0
+					OP_CARRY = 1'b0;								// Logical operations do not use the carry flag
 				end
-				ALU_DAA: begin
+				ALU_DAA: begin										// DAA requires the half-carry flag to start
 					OP_CARRY = INFLAGS[FLAG_H];
 				end
 				ALU_SHL: begin
-					OP_CARRY = 1'b0;
+					{ PART_RESULT, RESULT_LOWER } = { OP1[6:0], 1'b0 };
 				end
 				ALU_SHR: begin
-					OP_CARRY = 1'b0;
+					{ PART_RESULT, RESULT_LOWER } = { 1'b0, OP1[7:1] };
 				end
 			endcase 
 			
@@ -178,6 +179,7 @@ assign PART_RESULT = ENABLE ?		r : 4'bz;
 assign PART_FLAGS  = ENABLE ?  c[3:2] : 2'bz;
 
 endmodule
+
 ////////////////////////////////////////////////////////////////
 // FLAG SETTER
 
@@ -190,6 +192,33 @@ module FLAGSETTER (										 			// Set flags according to partial result and fl
 	assign		Z = PART_RESULT == 0;
 	assign		S = PART_RESULT[7];
 	assign		P = ~^PART_RESULT;
+
+endmodule
+
+////////////////////////////////////////////////////////////////
+// SHIFT/ROTATE
+
+module SHLEFT (
+	input		[ 3: 0]	OP1,
+	input				CARRY,
+	input				ENABLE,
+	output 		[ 3: 0]	PART_RESULT,
+	output 		[ 1: 0]	PART_FLAGS);
+
+	assign PART_RESULT = ENABLE ? { OP1[2:0], CARRY } : 4'bz;		// Shift left operation
+	assign PART_FLAGS  = ENABLE ? OP1[3:2] : 2'bz;
+
+endmodule
+
+module SHRIGHT (
+	input		[ 3: 0]	OP1,
+	input				CARRY,
+	input				ENABLE,
+	output 		[ 3: 0]	PART_RESULT,
+	output 		[ 1: 0]	PART_FLAGS);
+
+	assign PART_RESULT = ENABLE ? { CARRY, OP1[3:1] } : 4'bz;		// Shift right operation
+	assign PART_FLAGS  = ENABLE ? OP1[3:2] : 2'bz;
 
 endmodule
 

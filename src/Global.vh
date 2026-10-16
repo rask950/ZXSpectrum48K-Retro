@@ -44,7 +44,8 @@ localparam ALU_SRA	= 5'b10101;
 localparam ALU_SLL	= 5'b10110;
 localparam ALU_SRL	= 5'b10111;
 
-localparam ALU_SR	= 5'b10zzz;             // Match shift/rotate opcodes
+localparam ALU_SHR	= 5'b10zz1;             // Match shift/rotate right
+localparam ALU_SHL	= 5'b10zz0;             // Match shift/rotate left
 
 localparam ALU_BIT	= 5'b11000;
 localparam ALU_SET	= 5'b11001;

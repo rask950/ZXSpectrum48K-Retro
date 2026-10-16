@@ -2402,7 +2402,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_M1T5H: begin
 			ALU_OP1				<=`REG_W;
-			ALU_OP2				<= {8{ ALU_OP2[7] }};					// This is 255 or 0 depending on the sign of OP2
+			ALU_OP2				<= { 8 { ALU_OP2[7] }};					// This is 255 or 0 depending on the sign of OP2
 			ALU_INFLAGS			<= ALU_OUTFLAGS;						// Also need the flags for any carry
 		end
 

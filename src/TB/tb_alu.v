@@ -19,13 +19,13 @@ module tb_alu (
 
 	initial begin
 		ALU_OPCODE = ALU_ADD;
-		ALU_OP1 = 14;
+		ALU_OP1 = 13;
 		ALU_OP2 = 8'hF2;
 		ALU_INFLAGS = 0;
 
 		#1 $display("operation %d + %d", ALU_OP1, 	ALU_OP2);
-		#10 $monitor("alu [%d] %h %h - %h %b", ZALU.STATE, ZALU.OP1_HALF, ZALU.OP2_HALF, ZALU.PART_RESULT, ZALU.PART_FLAGS );
-		#10 $monitor("result %h %b", ALU_RESULT, ALU_OUTFLAGS );
+		#1 $monitor("alu [%d] %h %h - %h %b", ZALU.STATE, ZALU.OP1_HALF, ZALU.OP2_HALF, ZALU.PART_RESULT, ZALU.PART_FLAGS );
+		#1 $monitor("result %h %b", ALU_RESULT, ALU_OUTFLAGS );
 	end
 
 	Z80_ALU ZALU (
