@@ -40,50 +40,82 @@ end
 
 always @(*) begin
 
-	case(STATE)
+	casez(OPCODE)
 
-		STATE_LOWER: begin
+	ALU_SHL: begin
+		case(STATE)
+			STATE_LOWER: begin
 
-			OP1_HALF = OP1[3:0];
-			OP2_HALF = OP2[3:0];
+			end
+			STATE_UPPER: begin
+			end
+			STATE_RESULT: begin
+			end
+		endcase
+	end
 
-			casez(OPCODE)
+	ALU_SHR: begin
+		case(STATE)
+			STATE_LOWER: begin
+			end
+			STATE_UPPER: begin
+			end
+			STATE_RESULT: begin
+			end
+		endcase
+	end
 
-				ALU_ARI: begin										// Arithmetic operations (ADD, ADC, SUB, SBC, CP)
-					OP_CARRY = OPCODE[0] & INFLAGS[FLAG_C];			// Carry flag if SBC/ADC
-				end
-				ALU_ALO: begin
-					OP_CARRY = 1'b0;								// Logical operations do not use the carry flag
-				end
-				ALU_DAA: begin										// DAA requires the half-carry flag to start
-					OP_CARRY = INFLAGS[FLAG_H];
-				end
-				ALU_SHL: begin
-					{ PART_RESULT, RESULT_LOWER } = { OP1[6:0], 1'b0 };
-				end
-				ALU_SHR: begin
-					{ PART_RESULT, RESULT_LOWER } = { 1'b0, OP1[7:1] };
-				end
-			endcase 
-			
-			STATE 	= STATE_UPPER;
-		end
-		
-		STATE_UPPER: begin
-			RESULT_LOWER 	 = PART_RESULT;
-			H_FLAG			 = PART_FLAGS[1];
+	ALU_BSR: begin
+		case(STATE)
+			STATE_LOWER: begin
+			end
+			STATE_UPPER: begin
+			end
+			STATE_RESULT: begin
+			end
+		endcase
+	end
 
-			OP1_HALF = OP1[7:4];
-			OP2_HALF = OP2[7:4];
-			OP_CARRY = PART_FLAGS[1];
-			STATE 	= STATE_RESULT;
-		end
-		
-		STATE_RESULT: begin
-			OUTFLAGS = { S_FLAG, Z_FLAG, 1'b0, H_FLAG, 1'b0, PART_FLAGS[1] ^ PART_FLAGS[0], OPCODE == ALU_SUB | OPCODE == ALU_SBC, PART_FLAGS[1] };
-			RESULT	 = OPCODE == ALU_CP ? OP1 : { PART_RESULT, RESULT_LOWER };
-			STATE 	= STATE_LOWER;
-		end
+	ALU_DAA: begin
+		case(STATE)
+			STATE_LOWER: begin
+				OP1_HALF = OP1[3:0];
+				OP2_HALF = OP2[3:0];
+				OP_CARRY = INFLAGS[FLAG_H];
+			end
+			STATE_UPPER: begin
+			end
+			STATE_RESULT: begin
+			end
+		endcase
+	end
+
+	ALU_FLG: begin
+		case(STATE)
+			STATE_LOWER: begin
+				{ PART_RESULT, RESULT_LOWER } = OP1;
+				OP_CARRY = FALSE;
+			end
+			STATE_UPPER: begin
+			end
+			STATE_RESULT: begin
+			end
+		endcase
+	end
+
+	default: begin
+		case(STATE)
+			STATE_LOWER: begin
+				OP1_HALF = OP1[3:0];
+				OP2_HALF = OP2[3:0];
+				OP_CARRY = OPCODE[0] & INFLAGS[FLAG_C];
+			end
+			STATE_UPPER: begin
+			end
+			STATE_RESULT: begin
+			end
+		endcase
+	end
 
 	endcase
 	

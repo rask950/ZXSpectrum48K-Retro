@@ -33,7 +33,6 @@ localparam ALU_ALO	= 5'b001zz;				// Match logical/compare opcodes
 
 localparam ALU_DAA	= 5'b01000;				// C and H
 
-
 localparam ALU_RLC	= 5'b10000;
 localparam ALU_RRC	= 5'b10001;
 localparam ALU_RL	= 5'b10010;				// C in
