@@ -45,7 +45,6 @@ always @(*) begin
 	ALU_SHL: begin
 		case(STATE)
 			STATE_LOWER: begin
-
 			end
 			STATE_UPPER: begin
 			end
@@ -93,8 +92,6 @@ always @(*) begin
 	ALU_FLG: begin
 		case(STATE)
 			STATE_LOWER: begin
-				{ PART_RESULT, RESULT_LOWER } = OP1;
-				OP_CARRY = FALSE;
 			end
 			STATE_UPPER: begin
 			end
@@ -108,11 +105,21 @@ always @(*) begin
 			STATE_LOWER: begin
 				OP1_HALF = OP1[3:0];
 				OP2_HALF = OP2[3:0];
-				OP_CARRY = OPCODE[0] & INFLAGS[FLAG_C];
+				OP_CARRY = OPCODE == ALU_SBC || OPCODE == ALU_ADC ? INFLAGS[FLAG_C] : 1'b0;
+				STATE	 = STATE_UPPER;
 			end
 			STATE_UPPER: begin
+				RESULT_LOWER = PART_RESULT;
+				H_FLAG = PART_FLAGS[1];
+
+				OP1_HALF = OP1[7:4];
+				OP2_HALF = OP2[7:4];
+				OP_CARRY = H_FLAG;
+				STATE	 = STATE_RESULT;
 			end
 			STATE_RESULT: begin
+				RESULT	 = OPCODE == ALU_CP ? OP1 : { PART_RESULT, RESULT_LOWER };
+				OUTFLAGS = { S_FLAG, Z_FLAG, 1'b0, H_FLAG, 1'b0, ^PART_FLAGS, OPCODE == ALU_SUB || OPCODE == ALU_SBC, PART_FLAGS[1] };
 			end
 		endcase
 	end
@@ -145,6 +152,21 @@ SUB4 sub_instance (
 	.PART_RESULT(	PART_RESULT),
 	.PART_FLAGS(	PART_FLAGS)
 );
+
+endmodule
+
+////////////////////////////////////////////////////////////////
+// FLAG SETTER
+
+module FLAGSETTER (										 			// Set flags according to partial result ONLY
+	input		[ 7: 0]	PART_RESULT,
+	output		Z,													// So only the S, Z and P flags are set
+	output		S,
+	output		P
+);
+	assign		Z = PART_RESULT == 0;
+	assign		S = PART_RESULT[7];
+	assign		P = ~^PART_RESULT;
 
 endmodule
 
@@ -212,47 +234,8 @@ assign PART_FLAGS  = ENABLE ?  c[3:2] : 2'bz;
 
 endmodule
 
-////////////////////////////////////////////////////////////////
-// FLAG SETTER
 
-module FLAGSETTER (										 			// Set flags according to partial result and flags ...
-	input		[ 7: 0]	PART_RESULT,
-	output		Z,
-	output		S,
-	output		P
-);
-	assign		Z = PART_RESULT == 0;
-	assign		S = PART_RESULT[7];
-	assign		P = ~^PART_RESULT;
 
-endmodule
-
-////////////////////////////////////////////////////////////////
-// SHIFT/ROTATE
-
-module SHLEFT (
-	input		[ 3: 0]	OP1,
-	input				CARRY,
-	input				ENABLE,
-	output 		[ 3: 0]	PART_RESULT,
-	output 		[ 1: 0]	PART_FLAGS);
-
-	assign PART_RESULT = ENABLE ? { OP1[2:0], CARRY } : 4'bz;		// Shift left operation
-	assign PART_FLAGS  = ENABLE ? OP1[3:2] : 2'bz;
-
-endmodule
-
-module SHRIGHT (
-	input		[ 3: 0]	OP1,
-	input				CARRY,
-	input				ENABLE,
-	output 		[ 3: 0]	PART_RESULT,
-	output 		[ 1: 0]	PART_FLAGS);
-
-	assign PART_RESULT = ENABLE ? { CARRY, OP1[3:1] } : 4'bz;		// Shift right operation
-	assign PART_FLAGS  = ENABLE ? OP1[3:2] : 2'bz;
-
-endmodule
 
 ////////////////////////////////////////////////////////////////
 // Primitives
