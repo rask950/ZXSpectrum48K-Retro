@@ -119,7 +119,7 @@ always @(*) begin
 			end
 			STATE_RESULT: begin
 				RESULT	 = OPCODE == ALU_CP ? OP1 : { PART_RESULT, RESULT_LOWER };
-				OUTFLAGS = { S_FLAG, Z_FLAG, 1'b0, H_FLAG, 1'b0, ^PART_FLAGS, OPCODE == ALU_SUB || OPCODE == ALU_SBC, PART_FLAGS[1] };
+				OUTFLAGS = { S_FLAG, Z_FLAG, 1'b0, H_FLAG, 1'b0, ^PART_FLAGS, OPCODE == ALU_SUB | OPCODE == ALU_SBC | OPCODE == ALU_CP, PART_FLAGS[1] };
 			end
 		endcase
 	end
