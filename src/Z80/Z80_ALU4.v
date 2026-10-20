@@ -100,7 +100,18 @@ always @(*) begin
 		endcase
 	end
 
-	default: begin
+	ALU_LOG:begin													// OPCODES AND, OR, XOR ()
+		case(STATE)
+			STATE_LOWER: begin
+			end
+			STATE_UPPER: begin
+			end
+			STATE_RESULT: begin
+			end
+		endcase
+	end
+
+	default: begin													// OPCODES ADD, ADC, SUB, SBC, CP - 0, 1, 2, 3, 7
 		case(STATE)
 			STATE_LOWER: begin
 				OP1_HALF = OP1[3:0];
@@ -117,9 +128,9 @@ always @(*) begin
 				OP_CARRY = H_FLAG;
 				STATE	 = STATE_RESULT;
 			end
-			STATE_RESULT: begin
-				RESULT	 = OPCODE == ALU_CP ? OP1 : { PART_RESULT, RESULT_LOWER };
-				OUTFLAGS = { S_FLAG, Z_FLAG, 1'b0, H_FLAG, 1'b0, ^PART_FLAGS, OPCODE == ALU_SUB | OPCODE == ALU_SBC | OPCODE == ALU_CP, PART_FLAGS[1] };
+			STATE_RESULT: begin														// OPCODE[1] indicates subtraction (including CP)
+				RESULT	 = OPCODE[2] ? OP1 : { PART_RESULT, RESULT_LOWER };			// OPCODE[2] indicates comparison (CP)
+				OUTFLAGS = { S_FLAG, Z_FLAG, 1'b0, H_FLAG, 1'b0, ^PART_FLAGS, OPCODE[1], PART_FLAGS[1] };
 			end
 		endcase
 	end
