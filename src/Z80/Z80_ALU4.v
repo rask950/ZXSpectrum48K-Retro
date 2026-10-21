@@ -38,7 +38,7 @@ initial begin
 	STATE = STATE_LOWER;
 end
 
-always @(*) begin
+always @(posedge CLK) begin
 
 	casez(OPCODE)
 
@@ -78,9 +78,9 @@ always @(*) begin
 	ALU_DAA: begin
 		case(STATE)
 			STATE_LOWER: begin
-				OP1_HALF = OP1[3:0];
-				OP2_HALF = OP2[3:0];
-				OP_CARRY = INFLAGS[FLAG_H];
+				OP1_HALF <= OP1[3:0];
+				OP2_HALF <= OP2[3:0];
+				OP_CARRY <= INFLAGS[FLAG_H];
 			end
 			STATE_UPPER: begin
 			end
@@ -105,21 +105,21 @@ always @(*) begin
 	ALU_XOR:begin													// OPCODES AND, OR, XOR - 4, 5, 6
 		case(STATE)
 			STATE_LOWER: begin
-				OP1_HALF = OP1[3:0];
-				OP2_HALF = OP2[3:0];
-				STATE	 = STATE_UPPER;
+				OP1_HALF <= OP1[3:0];
+				OP2_HALF <= OP2[3:0];
+				STATE	 <= STATE_UPPER;
 			end
 			STATE_UPPER: begin
-				RESULT_LOWER = PART_RESULT;
+				RESULT_LOWER <= PART_RESULT;
 
-				OP1_HALF = OP1[7:4];
-				OP2_HALF = OP2[7:4];
-				STATE	 = STATE_RESULT;
+				OP1_HALF <= OP1[7:4];
+				OP2_HALF <= OP2[7:4];
+				STATE	 <= STATE_RESULT;
 			end
 			STATE_RESULT: begin
-				RESULT	 = { PART_RESULT, RESULT_LOWER };
-				OUTFLAGS = { S_FLAG, Z_FLAG, 3'b0, P_FLAG, 2'b0 };
-				STATE	 = STATE_LOWER;
+				RESULT	 <= { PART_RESULT, RESULT_LOWER };
+				OUTFLAGS <= { S_FLAG, Z_FLAG, 3'b0, P_FLAG, 2'b0 };
+				STATE	 <= STATE_LOWER;
 			end
 		endcase
 	end
@@ -127,24 +127,24 @@ always @(*) begin
 	default: begin													// OPCODES ADD, ADC, SUB, SBC, CP - 0, 1, 2, 3, 7
 		case(STATE)
 			STATE_LOWER: begin
-				OP1_HALF = OP1[3:0];
-				OP2_HALF = OP2[3:0];
-				OP_CARRY = OPCODE == ALU_SBC || OPCODE == ALU_ADC ? INFLAGS[FLAG_C] : 1'b0;
-				STATE	 = STATE_UPPER;
+				OP1_HALF		<= OP1[3:0];
+				OP2_HALF		<= OP2[3:0];
+				OP_CARRY		<= OPCODE == ALU_SBC || OPCODE == ALU_ADC ? INFLAGS[FLAG_C] : 1'b0;
+				STATE			<= STATE_UPPER;
 			end
 			STATE_UPPER: begin
-				RESULT_LOWER = PART_RESULT;
-				H_FLAG = PART_FLAGS[1];
+				RESULT_LOWER	<= PART_RESULT;
+				H_FLAG			<= PART_FLAGS[1];
 
-				OP1_HALF = OP1[7:4];
-				OP2_HALF = OP2[7:4];
-				OP_CARRY = H_FLAG;
-				STATE	 = STATE_RESULT;
+				OP1_HALF		<= OP1[7:4];
+				OP2_HALF		<= OP2[7:4];
+				OP_CARRY		<= H_FLAG;
+				STATE			<= STATE_RESULT;
 			end
-			STATE_RESULT: begin														// OPCODE[1] indicates subtraction (including CP)
-				RESULT	 = OPCODE[2] ? OP1 : { PART_RESULT, RESULT_LOWER };			// OPCODE[2] indicates comparison (CP)
-				OUTFLAGS = { S_FLAG, Z_FLAG, 1'b0, H_FLAG, 1'b0, ^PART_FLAGS, OPCODE[1], PART_FLAGS[1] };
-				STATE	 = STATE_LOWER;
+			STATE_RESULT: begin															// OPCODE[1] indicates subtraction (including CP)
+				RESULT			<= OPCODE[2] ? OP1 : { PART_RESULT, RESULT_LOWER };		// OPCODE[2] indicates comparison (CP - 7)
+				OUTFLAGS		<= { S_FLAG, Z_FLAG, 1'b0, H_FLAG, 1'b0, ^PART_FLAGS, OPCODE[1], PART_FLAGS[1] };
+				STATE			<= STATE_LOWER;
 			end
 		endcase
 	end
@@ -164,7 +164,7 @@ ADD4 add_instance (
 	.OP1(			OP1_HALF),
 	.OP2(			OP2_HALF),
 	.CARRY(			OP_CARRY),
-	.ENABLE(		OPCODE == ALU_ADD || OPCODE == ALU_ADC),
+	.ENABLE(		OPCODE == ALU_ADD || OPCODE == ALU_ADC || OPCODE == ALU_DAA),
 	.PART_RESULT(	PART_RESULT),
 	.PART_FLAGS(	PART_FLAGS)
 );
