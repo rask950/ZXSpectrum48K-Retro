@@ -100,13 +100,26 @@ always @(*) begin
 		endcase
 	end
 
-	ALU_LOG:begin													// OPCODES AND, OR, XOR ()
+	ALU_AND,
+	ALU_OR,
+	ALU_XOR:begin													// OPCODES AND, OR, XOR - 4, 5, 6
 		case(STATE)
 			STATE_LOWER: begin
+				OP1_HALF = OP1[3:0];
+				OP2_HALF = OP2[3:0];
+				STATE	 = STATE_UPPER;
 			end
 			STATE_UPPER: begin
+				RESULT_LOWER = PART_RESULT;
+
+				OP1_HALF = OP1[7:4];
+				OP2_HALF = OP2[7:4];
+				STATE	 = STATE_RESULT;
 			end
 			STATE_RESULT: begin
+				RESULT	 = { PART_RESULT, RESULT_LOWER };
+				OUTFLAGS = { S_FLAG, Z_FLAG, 3'b0, P_FLAG, 2'b0 };
+				STATE	 = STATE_LOWER;
 			end
 		endcase
 	end
@@ -131,6 +144,7 @@ always @(*) begin
 			STATE_RESULT: begin														// OPCODE[1] indicates subtraction (including CP)
 				RESULT	 = OPCODE[2] ? OP1 : { PART_RESULT, RESULT_LOWER };			// OPCODE[2] indicates comparison (CP)
 				OUTFLAGS = { S_FLAG, Z_FLAG, 1'b0, H_FLAG, 1'b0, ^PART_FLAGS, OPCODE[1], PART_FLAGS[1] };
+				STATE	 = STATE_LOWER;
 			end
 		endcase
 	end
@@ -150,7 +164,7 @@ ADD4 add_instance (
 	.OP1(			OP1_HALF),
 	.OP2(			OP2_HALF),
 	.CARRY(			OP_CARRY),
-	.ENABLE(		OPCODE == ALU_ADD | OPCODE == ALU_ADC),
+	.ENABLE(		OPCODE == ALU_ADD || OPCODE == ALU_ADC),
 	.PART_RESULT(	PART_RESULT),
 	.PART_FLAGS(	PART_FLAGS)
 );
@@ -159,9 +173,30 @@ SUB4 sub_instance (
 	.OP1(			OP1_HALF),
 	.OP2(			OP2_HALF),
 	.CARRY(			OP_CARRY),
-	.ENABLE(		OPCODE == ALU_SUB | OPCODE == ALU_SBC | OPCODE == ALU_CP),
+	.ENABLE(		OPCODE == ALU_SUB || OPCODE == ALU_SBC || OPCODE == ALU_CP),
 	.PART_RESULT(	PART_RESULT),
 	.PART_FLAGS(	PART_FLAGS)
+);
+
+AND4 and_instance (
+	.OP1(			OP1_HALF),
+	.OP2(			OP2_HALF),
+	.ENABLE(		OPCODE == ALU_AND),
+	.PART_RESULT(	PART_RESULT)
+);
+
+OR4 or_instance (
+	.OP1(			OP1_HALF),
+	.OP2(			OP2_HALF),
+	.ENABLE(		OPCODE == ALU_OR),
+	.PART_RESULT(	PART_RESULT)
+);
+
+XOR4 xor_instance (
+	.OP1(			OP1_HALF),
+	.OP2(			OP2_HALF),
+	.ENABLE(		OPCODE == ALU_XOR),
+	.PART_RESULT(	PART_RESULT)
 );
 
 endmodule
@@ -245,8 +280,77 @@ assign PART_FLAGS  = ENABLE ?  c[3:2] : 2'bz;
 
 endmodule
 
+////////////////////////////////////////////////////////////////
+// AND
 
+module AND4(
+	input		[ 3: 0]	OP1,
+	input		[ 3: 0]	OP2,
+	input  				ENABLE,
+	output		[ 3: 0]	PART_RESULT
+);
 
+	reg			[ 3: 0]	r;
+
+AND1 and0( r[0], OP1[0], OP2[0]);
+
+AND1 and1( r[1], OP1[1], OP2[1]);
+
+AND1 and2( r[2], OP1[2], OP2[2]);
+
+AND1 and3( r[3], OP1[3], OP2[3]);
+
+assign PART_RESULT	= ENABLE ?	  r : 4'bz;
+
+endmodule
+
+////////////////////////////////////////////////////////////////
+// OR
+
+module OR4(
+	input		[ 3: 0]	OP1,
+	input		[ 3: 0]	OP2,
+	input  				ENABLE,
+	output		[ 3: 0]	PART_RESULT
+);
+
+	reg			[ 3: 0]	r;
+
+OR1 or0( r[0], OP1[0], OP2[0]);
+
+OR1 or1( r[1], OP1[1], OP2[1]);
+
+OR1 or2( r[2], OP1[2], OP2[2]);
+
+OR1 or3( r[3], OP1[3], OP2[3]);
+
+assign PART_RESULT	= ENABLE ?	  r : 4'bz;
+
+endmodule
+
+////////////////////////////////////////////////////////////////
+// XOR
+
+module XOR4(
+	input		[ 3: 0]	OP1,
+	input		[ 3: 0]	OP2,
+	input  				ENABLE,
+	output		[ 3: 0]	PART_RESULT
+);
+
+	reg			[ 3: 0]	r;
+
+XOR1 xor0( r[0], OP1[0], OP2[0]);
+
+XOR1 xor1( r[1], OP1[1], OP2[1]);
+
+XOR1 xor2( r[2], OP1[2], OP2[2]);
+
+XOR1 xor3( r[3], OP1[3], OP2[3]);
+
+assign PART_RESULT	= ENABLE ?	  r : 4'bz;
+
+endmodule
 
 ////////////////////////////////////////////////////////////////
 // Primitives
@@ -304,6 +408,51 @@ primitive SUBC1 (													// Calculate carry for one bit subtraction
 			1	0	1 :	0;
 			1	1	0 :	0;
 			1	1	1 :	1;
+		endtable
+
+endprimitive
+
+primitive AND1 (													// One bit logical AND
+	output 				R,
+	input 				A, B
+);
+
+	table
+		//  A	B 	R
+			0	0 :	0;
+			0	1 :	0;
+			1	0 :	0;
+			1	1 :	1;
+		endtable
+
+endprimitive
+
+primitive OR1 (														// One bit logical OR
+	output 				R,
+	input 				A, B
+);
+
+	table
+		//  A 	B 	R
+			0	0 :	0;
+			0	1 :	1;
+			1	0 :	1;
+			1	1 :	1;
+		endtable
+
+endprimitive
+
+primitive XOR1 (													// One bit logical XOR
+	output 				R,
+	input 				A, B
+);
+
+	table
+		//  A 	B 	R
+			0	0 :	0;
+			0	1 :	1;
+			1	0 :	1;
+			1	1 :	0;
 		endtable
 
 endprimitive

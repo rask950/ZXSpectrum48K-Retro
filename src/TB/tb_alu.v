@@ -18,9 +18,9 @@ module tb_alu (
 	reg			[ 7: 0]	ALU_OUTFLAGS;								// Flags out
 
 	initial begin
-		ALU_OPCODE = ALU_ADC;
+		ALU_OPCODE = ALU_XOR;
 		ALU_OP1 = 1;
-		ALU_OP2 = 126;
+		ALU_OP2 = 127;
 		ALU_INFLAGS = 1;
 
 		#1 $display("operation %d + %d", ALU_OP1, 	ALU_OP2);
