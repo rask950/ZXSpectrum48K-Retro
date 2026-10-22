@@ -79,12 +79,23 @@ always @(posedge CLK) begin
 		case(STATE)
 			STATE_LOWER: begin
 				OP1_HALF <= OP1[3:0];
-				OP2_HALF <= OP2[3:0];
-				OP_CARRY <= INFLAGS[FLAG_H];
+				OP2_HALF <= INFLAGS[FLAG_H] || OP1_HALF > 4'd9 ? 4'd6 : 4'd0;
+				OP_CARRY <= 1'b0;
+				STATE	 <= STATE_UPPER;
 			end
 			STATE_UPPER: begin
+				RESULT_LOWER	<= PART_RESULT;
+				H_FLAG			<= PART_FLAGS[1];
+
+				OP1_HALF		<= OP1[7:4];
+				OP2_HALF		<= INFLAGS[FLAG_C] || OP1_HALF > 4'd9 ? 4'd6 : 4'd0;
+				OP_CARRY		<= H_FLAG;
+				STATE			<= STATE_RESULT;
 			end
-			STATE_RESULT: begin
+			STATE_RESULT: begin															// OPCODE[1] indicates subtraction (including CP)
+				RESULT			<= OPCODE[2] ? OP1 : { PART_RESULT, RESULT_LOWER };		// OPCODE[2] indicates comparison (CP - 7)
+				OUTFLAGS		<= { S_FLAG, Z_FLAG, 1'b0, H_FLAG, 1'b0, P_FLAG, INFLAGS[1], PART_FLAGS[1] };
+				STATE			<= STATE_LOWER;
 			end
 		endcase
 	end
