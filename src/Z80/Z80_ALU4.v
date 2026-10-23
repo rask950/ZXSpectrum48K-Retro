@@ -64,24 +64,13 @@ always @(posedge CLK) begin
 		endcase
 	end
 
-	ALU_BSR: begin
-		case(STATE)
-			STATE_LOWER: begin
-			end
-			STATE_UPPER: begin
-			end
-			STATE_RESULT: begin
-			end
-		endcase
-	end
-
 	ALU_DAA: begin
 		case(STATE)
 			STATE_LOWER: begin
-				OP1_HALF <= OP1[3:0];
-				OP2_HALF <= INFLAGS[FLAG_H] || OP1_HALF > 4'd9 ? 4'd6 : 4'd0;
-				OP_CARRY <= 1'b0;
-				STATE	 <= STATE_UPPER;
+				OP1_HALF		<= OP1[3:0];
+				OP2_HALF		<= INFLAGS[FLAG_H] || OP1_HALF > 4'd9 ? 4'd6 : 4'd0;
+				OP_CARRY		<= 1'b0;
+				STATE			<= STATE_UPPER;
 			end
 			STATE_UPPER: begin
 				RESULT_LOWER	<= PART_RESULT;
@@ -92,8 +81,8 @@ always @(posedge CLK) begin
 				OP_CARRY		<= H_FLAG;
 				STATE			<= STATE_RESULT;
 			end
-			STATE_RESULT: begin															// OPCODE[1] indicates subtraction (including CP)
-				RESULT			<= OPCODE[2] ? OP1 : { PART_RESULT, RESULT_LOWER };		// OPCODE[2] indicates comparison (CP - 7)
+			STATE_RESULT: begin
+				RESULT			<= { PART_RESULT, RESULT_LOWER };
 				OUTFLAGS		<= { S_FLAG, Z_FLAG, 1'b0, H_FLAG, 1'b0, P_FLAG, INFLAGS[1], PART_FLAGS[1] };
 				STATE			<= STATE_LOWER;
 			end

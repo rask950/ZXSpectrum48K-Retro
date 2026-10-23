@@ -23,13 +23,11 @@ localparam ALU_ADD	= 5'b00000;
 localparam ALU_ADC	= 5'b00001;				// C in
 localparam ALU_SUB	= 5'b00010;
 localparam ALU_SBC	= 5'b00011;				// C in
-localparam ALU_ARI	= 5'b000zz;				// Match arithmetic opcodes
 
 localparam ALU_AND	= 5'b00100;
 localparam ALU_XOR	= 5'b00101;
 localparam ALU_OR	= 5'b00110;
 localparam ALU_CP	= 5'b00111;
-localparam ALU_ALO	= 5'b001zz;				// Match logical/compare opcodes
 
 localparam ALU_DAA	= 5'b01000;				// C and H
 
@@ -49,8 +47,6 @@ localparam ALU_SHL	= 5'b10zz0;             // Match shift/rotate left
 localparam ALU_BIT	= 5'b11000;
 localparam ALU_SET	= 5'b11001;
 localparam ALU_RES	= 5'b11010;
-
-localparam ALU_BSR	= 5'b11zzz;				// Match BIT/SET/RESET operations
 
 localparam ALU_FLG	= 5'b11110;				// Pseudo-operation for setting flags only
 localparam ALU_NONE	= 5'b11111;				// No operation

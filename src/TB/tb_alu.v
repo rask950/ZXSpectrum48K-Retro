@@ -18,9 +18,10 @@ module tb_alu (
 	reg			[ 7: 0]	ALU_OUTFLAGS;								// Flags out
 
 	initial begin
-		ALU_OPCODE = ALU_DAA;
-		ALU_OP1 = 8'hFF;
-		ALU_INFLAGS = 1;
+		ALU_OPCODE = ALU_ADD;
+		ALU_OP1 = 8'h0A;
+		ALU_OP2 = 8'h06;
+		ALU_INFLAGS = 0;
 
 		#10 $display("operation %d + %d", ALU_OP1, 	ALU_OP2);
 		#10 $monitor("alu [%d] %h %h - %h %b", ZALU.STATE, ZALU.OP1_HALF, ZALU.OP2_HALF, ZALU.PART_RESULT, ZALU.PART_FLAGS );
