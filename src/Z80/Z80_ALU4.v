@@ -68,7 +68,7 @@ always @(posedge CLK) begin
 		case(STATE)
 			STATE_LOWER: begin
 				OP1_HALF		<= OP1[3:0];
-				OP2_HALF		<= INFLAGS[FLAG_H] || OP1_HALF > 4'd9 ? 4'd6 : 4'd0;
+				OP2_HALF		<= INFLAGS[FLAG_H] || OP1[3:0] > 4'd9 ? 4'd6 : 4'd0;
 				OP_CARRY		<= 1'b0;
 				STATE			<= STATE_UPPER;
 			end
@@ -77,7 +77,7 @@ always @(posedge CLK) begin
 				H_FLAG			<= PART_FLAGS[1];
 
 				OP1_HALF		<= OP1[7:4];
-				OP2_HALF		<= INFLAGS[FLAG_C] || OP1_HALF > 4'd9 ? 4'd6 : 4'd0;
+				OP2_HALF		<= INFLAGS[FLAG_C] || OP1[7:4] > 4'd9 ? 4'd6 : 4'd0;
 				OP_CARRY		<= H_FLAG;
 				STATE			<= STATE_RESULT;
 			end
@@ -138,7 +138,7 @@ always @(posedge CLK) begin
 
 				OP1_HALF		<= OP1[7:4];
 				OP2_HALF		<= OP2[7:4];
-				OP_CARRY		<= H_FLAG;
+				OP_CARRY		<= PART_FLAGS[1];
 				STATE			<= STATE_RESULT;
 			end
 			STATE_RESULT: begin															// OPCODE[1] indicates subtraction (including CP)
