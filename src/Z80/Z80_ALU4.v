@@ -24,10 +24,11 @@ reg 		[ 1: 0]	STATE;
 reg			[ 3: 0]	OP1_HALF;								// Inputs to primitives
 reg			[ 3: 0]	OP2_HALF;
 reg					OP_CARRY;
-reg					Z_FLAG;
 reg					S_FLAG;
-reg					P_FLAG;
+reg					Z_FLAG;
 reg					H_FLAG;
+reg					P_FLAG;
+reg					C_FLAG;
 
 reg			[ 3: 0]	RESULT_LOWER;							// Store lowwer nibble result
 
@@ -56,10 +57,14 @@ always @(posedge CLK) begin
 	ALU_SHR: begin
 		case(STATE)
 			STATE_LOWER: begin
+				{ C_FLAG, PART_RESULT } <= { OP1, 1'b0 }
 			end
 			STATE_UPPER: begin
 			end
 			STATE_RESULT: begin
+				RESULT			<= { PART_RESULT, RESULT_LOWER };
+				OUTFLAGS		<= { S_FLAG, Z_FLAG, 1'b0, H_FLAG, 1'b0, P_FLAG, INFLAGS[1], C_FLAG };
+				STATE			<= STATE_LOWER;
 			end
 		endcase
 	end
@@ -68,8 +73,7 @@ always @(posedge CLK) begin
 		case(STATE)
 			STATE_LOWER: begin
 				OP1_HALF		<= OP1[3:0];
-				OP2_HALF		<= INFLAGS[FLAG_H] || OP1[3:0] > 4'd9 ? 4'd6 : 4'd0;
-				OP_CARRY		<= 1'b0;
+				OP_CARRY		<= INFLAGS[FLAG_H];
 				STATE			<= STATE_UPPER;
 			end
 			STATE_UPPER: begin
@@ -77,8 +81,7 @@ always @(posedge CLK) begin
 				H_FLAG			<= PART_FLAGS[1];
 
 				OP1_HALF		<= OP1[7:4];
-				OP2_HALF		<= INFLAGS[FLAG_C] || OP1[7:4] > 4'd9 ? 4'd6 : 4'd0;
-				OP_CARRY		<= H_FLAG;
+				OP_CARRY		<= INFLAGS[FLAG_C];
 				STATE			<= STATE_RESULT;
 			end
 			STATE_RESULT: begin
@@ -160,11 +163,19 @@ FLAGSETTER flag_instance (
 	.P(				P_FLAG)
 );
 
+DAA4 daa_instance (
+	.OP1(			OP1_HALF),
+	.CARRY(			OP_CARRY),
+	.ENABLE(		OPCODE == ALU_DAA),
+	.PART_RESULT(	PART_RESULT),
+	.PART_FLAGS(	PART_FLAGS)
+);
+
 ADD4 add_instance (
 	.OP1(			OP1_HALF),
 	.OP2(			OP2_HALF),
 	.CARRY(			OP_CARRY),
-	.ENABLE(		OPCODE == ALU_ADD || OPCODE == ALU_ADC || OPCODE == ALU_DAA),
+	.ENABLE(		OPCODE == ALU_ADD || OPCODE == ALU_ADC),
 	.PART_RESULT(	PART_RESULT),
 	.PART_FLAGS(	PART_FLAGS)
 );
@@ -213,6 +224,40 @@ module FLAGSETTER (										 			// Set flags according to partial result ONLY
 	assign		Z = PART_RESULT == 0;
 	assign		S = PART_RESULT[7];
 	assign		P = ~^PART_RESULT;
+
+endmodule
+
+////////////////////////////////////////////////////////////////
+// DAA
+
+module DAA4(
+	input		[ 3: 0]	OP1,
+	input				CARRY,
+	input				ENABLE,
+	output 		[ 3: 0]	PART_RESULT,
+	output 		[ 1: 0]	PART_FLAGS
+);
+
+	wire			[ 3: 0]	r;
+	wire			[ 3: 0]	c;
+	wire					gt;
+
+assign gt = CARRY || OP1 > 4'h9 ? 1'b1 : 1'b0;						// Greater than 9 or carry
+
+ADDSUB1 add0( r[0], OP1[0], 1'b0, CARRY);							// Now we add 0 or 6 depending on gt
+ADDC1	adc0( c[0], OP1[0], 1'b0, CARRY);
+
+ADDSUB1 add1( r[1], OP1[1], gt, c[0]);								// NB 6 is 0110 in binary, so we add gt for the 1 bits
+ADDC1	adc1( c[1], OP1[1], gt, c[0]);
+
+ADDSUB1 add2( r[2], OP1[2], gt, c[1]);
+ADDC1	adc2( c[2], OP1[2], gt, c[1]);
+
+ADDSUB1 add3( r[3], OP1[3], 1'b0, c[2]);
+ADDC1	adc3( c[3], OP1[3], 1'b0, c[2]);
+
+assign PART_RESULT = ENABLE ?		r : 4'bz;
+assign PART_FLAGS  = ENABLE ?  c[3:2] : 2'bz;
 
 endmodule
 
