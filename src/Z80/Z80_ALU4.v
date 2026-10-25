@@ -32,6 +32,7 @@ reg					C_FLAG;
 
 reg			[ 3: 0]	RESULT_LOWER;							// Store lowwer nibble result
 
+wire		[ 3: 0]	PART_SHIFT;								// Partial result for shift operations
 wire		[ 3: 0]	PART_RESULT;							// Partial result from the ALU operations
 wire		[ 1: 0]	PART_FLAGS;								// Partial flags C, V from ALU operations
 
@@ -47,14 +48,15 @@ always @(posedge CLK) begin
 		case(STATE)
 			STATE_LOWER: begin
 				case(OPCODE)
-					ALU_RRC: H_FLAG <= OP1[0];
-					ALU_RR : H_FLAG <= INFLAGS[0];
-					ALU_SRA: H_FLAG <= OP1[7];
-					ALU_SRL: H_FLAG <= 1'b1;					
+					ALU_RRC: OP_CARRY <= OP1[0];
+					ALU_RR : OP_CARRY <= INFLAGS[0];
+					ALU_SRA: OP_CARRY <= OP1[7];
+					ALU_SRL: OP_CARRY <= 1'b1;					
 				endcase
+				STATE			<= STATE_UPPER;
 			end
 			STATE_UPPER: begin
-				{ PART_RESULT, C_FLAG } <= { H_FLAG, OP1 };
+				RESULT_LOWER	<= PART_SHIFT;
 				STATE			<= STATE_RESULT;
 			end
 			STATE_RESULT: begin
@@ -69,19 +71,20 @@ always @(posedge CLK) begin
 		case(STATE)
 			STATE_LOWER: begin
 				case(OPCODE)
-					ALU_RLC: H_FLAG <= OP1[7];
-					ALU_RL : H_FLAG <= INFLAGS[0];
-					ALU_SLA: H_FLAG <= 1'b0;
-					ALU_SLL: H_FLAG <= 1'b1;					
+					ALU_RLC: OP_CARRY <= OP1[7];
+					ALU_RL : OP_CARRY <= INFLAGS[0];
+					ALU_SLA: OP_CARRY <= 1'b0;
+					ALU_SLL: OP_CARRY <= 1'b1;					
 				endcase
+				STATE			<= STATE_UPPER;
 			end
 			STATE_UPPER: begin
-				{ C_FLAG, PART_RESULT } <= { OP1, H_FLAG };
+				RESULT_LOWER	<= PART_SHIFT;
 				STATE			<= STATE_RESULT;
 			end
 			STATE_RESULT: begin
 				RESULT			<= { PART_RESULT, RESULT_LOWER };
-				OUTFLAGS		<= { S_FLAG, Z_FLAG, 1'b0, H_FLAG, 1'b0, P_FLAG, INFLAGS[1], C_FLAG };
+				OUTFLAGS		<= { S_FLAG, Z_FLAG, 1'b0, 1'b0, 1'b0, P_FLAG, INFLAGS[1], PART_FLAGS[1] };
 				STATE			<= STATE_LOWER;
 			end
 		endcase
@@ -189,6 +192,14 @@ DAA4 daa_instance (
 	.PART_FLAGS(	PART_FLAGS)
 );
 
+SHL8 shl_instance (
+	.OP1(			OP1),
+	.CARRY(			OP_CARRY),
+	.ENABLE(		OPCODE == ALU_RLC || OPCODE == ALU_RL || OPCODE == ALU_SLA || OPCODE == ALU_SLL),
+	.PART_RESULT(	{ PART_RESULT, PART_SHIFT } ),
+	.PART_FLAGS(	PART_FLAGS)
+);
+
 ADD4 add_instance (
 	.OP1(			OP1_HALF),
 	.OP2(			OP2_HALF),
@@ -276,6 +287,22 @@ ADDC1	adc3( c[3], OP1[3], 1'b0, c[2]);
 
 assign PART_RESULT = ENABLE ?		r : 4'bz;
 assign PART_FLAGS  = ENABLE ?  c[3:2] : 2'bz;
+
+endmodule
+
+////////////////////////////////////////////////////////////////
+// SHL
+
+module SHL8(
+	input		[ 7: 0]	OP1,
+	input				CARRY,
+	input				ENABLE,
+	output 		[ 7: 0]	PART_RESULT,
+	output 		[ 1: 0]	PART_FLAGS
+);
+
+assign PART_RESULT = ENABLE ?  { OP1[6:0], CARRY }	: 8'bz;
+assign PART_FLAGS  = ENABLE ?  { OP1[7], 1'b0 } 	: 2'bz;
 
 endmodule
 
