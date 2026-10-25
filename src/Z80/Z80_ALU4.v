@@ -48,10 +48,10 @@ always @(posedge CLK) begin
 		case(STATE)
 			STATE_LOWER: begin
 				case(OPCODE)
-					ALU_RRC: OP_CARRY <= OP1[0];
-					ALU_RR : OP_CARRY <= INFLAGS[0];
-					ALU_SRA: OP_CARRY <= OP1[7];
-					ALU_SRL: OP_CARRY <= 1'b1;					
+					ALU_RRC:	OP_CARRY	<= OP1[0];
+					ALU_RR:		OP_CARRY	<= INFLAGS[0];
+					ALU_SRA:	OP_CARRY	<= OP1[7];
+					ALU_SRL:	OP_CARRY	<= 1'b1;					
 				endcase
 				STATE			<= STATE_UPPER;
 			end
@@ -61,7 +61,7 @@ always @(posedge CLK) begin
 			end
 			STATE_RESULT: begin
 				RESULT			<= { PART_RESULT, RESULT_LOWER };
-				OUTFLAGS		<= { S_FLAG, Z_FLAG, 1'b0, H_FLAG, 1'b0, P_FLAG, INFLAGS[1], C_FLAG };
+				OUTFLAGS		<= { S_FLAG, Z_FLAG, 3'b0, P_FLAG, 1'b0, PART_FLAGS[1] };
 				STATE			<= STATE_LOWER;
 			end
 		endcase
@@ -71,10 +71,10 @@ always @(posedge CLK) begin
 		case(STATE)
 			STATE_LOWER: begin
 				case(OPCODE)
-					ALU_RLC: OP_CARRY <= OP1[7];
-					ALU_RL : OP_CARRY <= INFLAGS[0];
-					ALU_SLA: OP_CARRY <= 1'b0;
-					ALU_SLL: OP_CARRY <= 1'b1;					
+					ALU_RLC:	OP_CARRY   <= OP1[7];
+					ALU_RL:		OP_CARRY   <= INFLAGS[0];
+					ALU_SLA:	OP_CARRY   <= 1'b0;
+					ALU_SLL:	OP_CARRY   <= 1'b1;					
 				endcase
 				STATE			<= STATE_UPPER;
 			end
@@ -84,7 +84,7 @@ always @(posedge CLK) begin
 			end
 			STATE_RESULT: begin
 				RESULT			<= { PART_RESULT, RESULT_LOWER };
-				OUTFLAGS		<= { S_FLAG, Z_FLAG, 1'b0, 1'b0, 1'b0, P_FLAG, INFLAGS[1], PART_FLAGS[1] };
+				OUTFLAGS		<= { S_FLAG, Z_FLAG, 3'b0, P_FLAG, 1'b0, PART_FLAGS[1] };
 				STATE			<= STATE_LOWER;
 			end
 		endcase
@@ -195,8 +195,16 @@ DAA4 daa_instance (
 SHL8 shl_instance (
 	.OP1(			OP1),
 	.CARRY(			OP_CARRY),
-	.ENABLE(		OPCODE == ALU_RLC || OPCODE == ALU_RL || OPCODE == ALU_SLA || OPCODE == ALU_SLL),
-	.PART_RESULT(	{ PART_RESULT, PART_SHIFT } ),
+	.ENABLE(		OPCODE[4] && ~OPCODE[0]),
+	.PART_RESULT( { PART_RESULT, PART_SHIFT } ),
+	.PART_FLAGS(	PART_FLAGS)
+);
+
+SHR8 shr_instance (
+	.OP1(			OP1),
+	.CARRY(			OP_CARRY),
+	.ENABLE(		OPCODE[4] &&  OPCODE[0]),
+	.PART_RESULT( { PART_RESULT, PART_SHIFT } ),
 	.PART_FLAGS(	PART_FLAGS)
 );
 
@@ -303,6 +311,22 @@ module SHL8(
 
 assign PART_RESULT = ENABLE ?  { OP1[6:0], CARRY }	: 8'bz;
 assign PART_FLAGS  = ENABLE ?  { OP1[7], 1'b0 } 	: 2'bz;
+
+endmodule
+
+////////////////////////////////////////////////////////////////
+// SHR
+
+module SHR8(
+	input		[ 7: 0]	OP1,
+	input				CARRY,
+	input				ENABLE,
+	output 		[ 7: 0]	PART_RESULT,
+	output 		[ 1: 0]	PART_FLAGS
+);
+
+assign PART_RESULT = ENABLE ?  { CARRY, OP1[7:1] }	: 8'bz;
+assign PART_FLAGS  = ENABLE ?  { OP1[0], 1'b0 } 	: 2'bz;
 
 endmodule
 
