@@ -43,23 +43,41 @@ always @(posedge CLK) begin
 
 	casez(OPCODE)
 
-	ALU_SHL: begin
+	ALU_SHR: begin
 		case(STATE)
 			STATE_LOWER: begin
+				case(OPCODE)
+					ALU_RRC: H_FLAG <= OP1[0];
+					ALU_RR : H_FLAG <= INFLAGS[0];
+					ALU_SRA: H_FLAG <= OP1[7];
+					ALU_SRL: H_FLAG <= 1'b1;					
+				endcase
 			end
 			STATE_UPPER: begin
+				{ PART_RESULT, C_FLAG } <= { H_FLAG, OP1 };
+				STATE			<= STATE_RESULT;
 			end
 			STATE_RESULT: begin
+				RESULT			<= { PART_RESULT, RESULT_LOWER };
+				OUTFLAGS		<= { S_FLAG, Z_FLAG, 1'b0, H_FLAG, 1'b0, P_FLAG, INFLAGS[1], C_FLAG };
+				STATE			<= STATE_LOWER;
 			end
 		endcase
 	end
 
-	ALU_SHR: begin
+	ALU_SHL: begin
 		case(STATE)
 			STATE_LOWER: begin
-				{ C_FLAG, PART_RESULT } <= { OP1, 1'b0 }
+				case(OPCODE)
+					ALU_RLC: H_FLAG <= OP1[7];
+					ALU_RL : H_FLAG <= INFLAGS[0];
+					ALU_SLA: H_FLAG <= 1'b0;
+					ALU_SLL: H_FLAG <= 1'b1;					
+				endcase
 			end
 			STATE_UPPER: begin
+				{ C_FLAG, PART_RESULT } <= { OP1, H_FLAG };
+				STATE			<= STATE_RESULT;
 			end
 			STATE_RESULT: begin
 				RESULT			<= { PART_RESULT, RESULT_LOWER };
