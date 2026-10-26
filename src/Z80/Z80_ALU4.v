@@ -116,10 +116,15 @@ always @(posedge CLK) begin
 	ALU_FLG: begin
 		case(STATE)
 			STATE_LOWER: begin
+				STATE			<= STATE_UPPER;
 			end
 			STATE_UPPER: begin
+				RESULT_LOWER	<= PART_SHIFT;
+				STATE			<= STATE_RESULT;
 			end
 			STATE_RESULT: begin
+				OUTFLAGS		<= { S_FLAG, Z_FLAG, 1'b0, INFLAGS[4], 1'b0, P_FLAG, INFLAGS[1:0] };
+				STATE			<= STATE_LOWER;
 			end
 		endcase
 	end
@@ -182,6 +187,12 @@ FLAGSETTER flag_instance (
 	.Z(				Z_FLAG),
 	.S(				S_FLAG),
 	.P(				P_FLAG)
+);
+
+FLG8 flg_instance (
+	.OP1(			OP1),
+	.ENABLE(		OPCODE == ALU_FLG),
+	.PART_RESULT( { PART_RESULT, PART_SHIFT } )
 );
 
 DAA4 daa_instance (
@@ -295,6 +306,19 @@ ADDC1	adc3( c[3], OP1[3], 1'b0, c[2]);
 
 assign PART_RESULT = ENABLE ?		r : 4'bz;
 assign PART_FLAGS  = ENABLE ?  c[3:2] : 2'bz;
+
+endmodule
+
+////////////////////////////////////////////////////////////////
+// FLG
+
+module FLG8(
+	input		[ 7: 0]	OP1,
+	input				ENABLE,
+	output 		[ 7: 0]	PART_RESULT
+);
+
+assign PART_RESULT = ENABLE ?  OP1 : 8'bz;
 
 endmodule
 
