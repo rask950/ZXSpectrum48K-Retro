@@ -1,20 +1,20 @@
 `timescale 1ns / 1ps
 
-module Z80_ALU (
+module Z80_ALU4 (
 	
 	input					CLK,
-	input					RESET,
-	input  reg		[ 4: 0]	OPCODE,									// This is the ALU opcode (NOT the CPU opcode)
-	input  reg		[ 7: 0]	OP1,
-	input  reg		[ 7: 0]	OP2,
-	input  reg		[ 7: 0]	INFLAGS,
-	output reg		[ 7: 0]	RESULT,
-	output reg		[ 7: 0]	OUTFLAGS
+	input	reg				ENABLE,
+	input	reg		[ 4: 0]	OPCODE,									// This is the ALU opcode (NOT the CPU opcode)
+	input	reg		[ 7: 0]	OP1,
+	input	reg		[ 7: 0]	OP2,
+	input	reg		[ 7: 0]	INFLAGS,
+	output	reg		[ 7: 0]	RESULT,
+	output	reg		[ 7: 0]	OUTFLAGS
 );
 
 `include "..\\Global.vh"
 
-localparam			STATE_IDLE   = 2'b00;					// Idle state
+localparam			STATE_IDLE	 = 2'b00;					// Idle state
 localparam			STATE_LOWER  = 2'b01;					// Lower nibble state
 localparam			STATE_UPPER  = 2'b10;					// Upper nibble state
 localparam			STATE_RESULT = 2'b11;					// Result
@@ -53,7 +53,7 @@ always @(posedge CLK) begin
 					ALU_SRA:	OP_CARRY	<= OP1[7];
 					ALU_SRL:	OP_CARRY	<= 1'b1;					
 				endcase
-				STATE			<= STATE_UPPER;
+				if (ENABLE) 	STATE		<= STATE_UPPER;
 			end
 			STATE_UPPER: begin
 				RESULT_LOWER	<= PART_SHIFT;
@@ -71,12 +71,12 @@ always @(posedge CLK) begin
 		case(STATE)
 			STATE_LOWER: begin
 				case(OPCODE)
-					ALU_RLC:	OP_CARRY   <= OP1[7];
-					ALU_RL:		OP_CARRY   <= INFLAGS[0];
-					ALU_SLA:	OP_CARRY   <= 1'b0;
-					ALU_SLL:	OP_CARRY   <= 1'b1;					
+					ALU_RLC:	OP_CARRY	<= OP1[7];
+					ALU_RL:		OP_CARRY	<= INFLAGS[0];
+					ALU_SLA:	OP_CARRY	<= 1'b0;
+					ALU_SLL:	OP_CARRY	<= 1'b1;					
 				endcase
-				STATE			<= STATE_UPPER;
+				if (ENABLE) 	STATE		<= STATE_UPPER;
 			end
 			STATE_UPPER: begin
 				RESULT_LOWER	<= PART_SHIFT;
@@ -95,7 +95,7 @@ always @(posedge CLK) begin
 			STATE_LOWER: begin
 				OP1_HALF		<= OP1[3:0];
 				OP_CARRY		<= INFLAGS[FLAG_H];
-				STATE			<= STATE_UPPER;
+				if (ENABLE) 	STATE <= STATE_UPPER;
 			end
 			STATE_UPPER: begin
 				RESULT_LOWER	<= PART_RESULT;
@@ -116,7 +116,7 @@ always @(posedge CLK) begin
 	ALU_FLG: begin
 		case(STATE)
 			STATE_LOWER: begin
-				STATE			<= STATE_UPPER;
+				if (ENABLE) 	STATE <= STATE_UPPER;
 			end
 			STATE_UPPER: begin
 				RESULT_LOWER	<= PART_SHIFT;
@@ -136,7 +136,7 @@ always @(posedge CLK) begin
 			STATE_LOWER: begin
 				OP1_HALF <= OP1[3:0];
 				OP2_HALF <= OP2[3:0];
-				STATE	 <= STATE_UPPER;
+				if (ENABLE)	STATE	<= STATE_UPPER;
 			end
 			STATE_UPPER: begin
 				RESULT_LOWER <= PART_RESULT;
@@ -159,7 +159,7 @@ always @(posedge CLK) begin
 				OP1_HALF		<= OP1[3:0];
 				OP2_HALF		<= OP2[3:0];
 				OP_CARRY		<= OPCODE == ALU_SBC || OPCODE == ALU_ADC ? INFLAGS[FLAG_C] : 1'b0;
-				STATE			<= STATE_UPPER;
+				if (ENABLE) 	STATE	<= STATE_UPPER;
 			end
 			STATE_UPPER: begin
 				RESULT_LOWER	<= PART_RESULT;

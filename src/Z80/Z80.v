@@ -47,42 +47,6 @@ module ZX_Spectrum_Z80 (
 
 	assign DATA_BUS = ~WR ? DATA_OUT : 8'bz;							// Tri-state data bus control based on WR signal
 
-initial begin
-
-	////////////////////////////////////////////////////////////////////////////
-	// CPU Internal status control
-
-	FSM_STATE					= STATE_IDLE;							// Initialise FSM
-	FSM_NEXT_STATE				= STATE_M1T1H;
-	FSM_LAST_M					= FALSE;
-
-	INT_MODE					= 0;									// Interrupt mode 0-2
-	IFF1						= FALSE;								// Interrupt enabled FF 1
-	IFF2						= FALSE;								// and 2
-	EXA							= FALSE;								// AF/AF'
-	EXX							= FALSE;								// BC,DE,HL/BC',DE',HL'
-
-	////////////////////////////////////////////////////////////////////////////
-	// CPU Instruction prefixes
-
-	IX							= FALSE;
-	IY							= FALSE;
-	BITS						= FALSE;
-	EXTD						= FALSE;
-
-	////////////////////////////////////////////////////////////////////////////
-	// CPU External control signals
-
-	M1							= INACTIVE;
-	WR							= INACTIVE;
-	RD							= INACTIVE;
-	MREQ						= INACTIVE;
-	IORQ						= INACTIVE;
-	RFSH						= INACTIVE;
-
-	`REG_PC						= 16'd0;					 			// Start execution here
-end
-
 	////////////////////////////////////////////////////////////////////////////
 	// CPU Register decoder
 
@@ -111,14 +75,17 @@ REG_DECODE ZREG(
 	reg					[ 7: 0]	ALU_INFLAGS;							// Flags in
 	reg					[ 7: 0]	ALU_RESULT;								// Result out
 	reg					[ 7: 0]	ALU_OUTFLAGS;							// Flags out
+	reg							ALU_ENABLE;								// ALU enable signal
 
-Z80_ALU ZALU (
+Z80_ALU4 ZALU (
+	.CLK(						CLK),
 	.OPCODE(					ALU_OPCODE),
 	.OP1(						ALU_OP1),
 	.OP2(						ALU_OP2),
 	.INFLAGS(					ALU_INFLAGS),
 	.RESULT(					ALU_RESULT),
-	.OUTFLAGS(					ALU_OUTFLAGS)
+	.OUTFLAGS(					ALU_OUTFLAGS),
+	.ENABLE(					ALU_ENABLE)
 );
 
 	////////////////////////////////////////////////////////////////////////////
@@ -147,6 +114,44 @@ Z80_CC ZCC (
 	.INFLAGS(					CC_INFLAGS),
 	.RESULT(					CC_RESULT)
 );
+
+initial begin
+
+	////////////////////////////////////////////////////////////////////////////
+	// CPU Internal status control
+
+	FSM_STATE					= STATE_IDLE;							// Initialise FSM
+	FSM_NEXT_STATE				= STATE_M1T1H;
+	FSM_LAST_M					= FALSE;
+
+	ALU_ENABLE					= FALSE;
+
+	INT_MODE					= 0;									// Interrupt mode 0-2
+	IFF1						= FALSE;								// Interrupt enabled FF 1
+	IFF2						= FALSE;								// and 2
+	EXA							= FALSE;								// AF/AF'
+	EXX							= FALSE;								// BC,DE,HL/BC',DE',HL'
+
+	////////////////////////////////////////////////////////////////////////////
+	// CPU Instruction prefixes
+
+	IX							= FALSE;
+	IY							= FALSE;
+	BITS						= FALSE;
+	EXTD						= FALSE;
+
+	////////////////////////////////////////////////////////////////////////////
+	// CPU External control signals
+
+	M1							= INACTIVE;
+	WR							= INACTIVE;
+	RD							= INACTIVE;
+	MREQ						= INACTIVE;
+	IORQ						= INACTIVE;
+	RFSH						= INACTIVE;
+
+	`REG_PC						= 16'd0;					 			// Start execution here
+end
 
 	////////////////////////////////////////////////////////////////////////////
 	// Main CPU processing
@@ -1477,9 +1482,11 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 			ALU_OPCODE			<= ALU_ADC;								// Prepare to add displacement
 			ALU_OP1				<=`REG_Z;								// To temp reg
 			ALU_INFLAGS			<= 8'd0;								// Clear carry
+			ALU_ENABLE			<= TRUE;
 		end
 
 		STATE_GN1T1L: begin
+			ALU_ENABLE			<= FALSE;
 		   `REG_Z				<= ALU_RESULT;							// Low byte result to Z
 			FSM_NEXT_STATE.T	<= STATE_T2H;
 		end
@@ -1562,13 +1569,15 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_M1T3L: begin
 			CPU_REG_NUM			<= OPCODE_REG[2:0];
-		end
-
-        STATE_M1T4H: begin
 			ALU_OPCODE 			<= { 2'b0, OPCODE_REG[5:3] };			// Initialize ALU
 			ALU_OP1				<=`CUR_A;
 			ALU_INFLAGS			<=`CUR_F;
 			ALU_OP2				<= REG.R8[REG8_INDEX];
+			ALU_ENABLE			<= TRUE;
+		end
+
+        STATE_M1T4H: begin
+			ALU_ENABLE			<= FALSE;
 		end
 
 		STATE_M1T4L: begin												// Store result and flags back in AF

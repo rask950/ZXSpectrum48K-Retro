@@ -15,10 +15,12 @@ initial begin
 
 	mem[ 0] = 62;
 	mem[ 1] = 71;
+	mem[ 2] = 14;
+	mem[ 3] = 6;
+	mem[ 4] = 129;
 
-	#10 $monitor("ADDRESS %h - DATA %d", CPU_ADDRESS_BUS, CPU_DATA_BUS );
-	#1 $monitor("ALU OP1 %h", z80.ALU_OP1 );
-	#1 $monitor("PC %h HL %h AF %h", z80.REG.R16[12], z80.REG.R16[2], z80.REG.R16[3] );
+	#1 $monitor("ADDRESS %h - DATA %d", CPU_ADDRESS_BUS, CPU_DATA_BUS );
+	#1 $monitor("PC %h BC %h HL %h AF %h ALU [%d] OP2 %h", z80.REG.R16[12], z80.REG.R16[0], z80.REG.R16[2], z80.REG.R16[3], z80.ZALU.STATE, z80.ZALU.OP2 );
 
 end
 
