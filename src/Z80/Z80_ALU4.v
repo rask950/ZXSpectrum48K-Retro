@@ -4,7 +4,7 @@ module Z80_ALU4 (
 	
 	input					CLK,
 	input	reg				ENABLE,
-	input	reg		[ 4: 0]	OPCODE,									// This is the ALU opcode (NOT the CPU opcode)
+	input	reg		[ 4: 0]	OPCODE,							// This is the ALU opcode (NOT the CPU opcode)
 	input	reg		[ 7: 0]	OP1,
 	input	reg		[ 7: 0]	OP2,
 	input	reg		[ 7: 0]	INFLAGS,
@@ -19,18 +19,22 @@ localparam			STATE_LOWER  = 2'b01;					// Lower nibble state
 localparam			STATE_UPPER  = 2'b10;					// Upper nibble state
 localparam			STATE_RESULT = 2'b11;					// Result
 
+reg					S;										// Individual output flags
+reg					Z;
+reg					H;
+reg					P;
+reg					V;
+reg					N;
+reg					C;
+
 reg 		[ 1: 0]	STATE;
 
 reg			[ 3: 0]	OP1_HALF;								// Inputs to primitives
 reg			[ 3: 0]	OP2_HALF;
 reg					OP_CARRY;
-reg					S_FLAG;
-reg					Z_FLAG;
-reg					H_FLAG;
-reg					P_FLAG;
-reg					C_FLAG;
 
-reg			[ 3: 0]	RESULT_LOWER;							// Store lowwer nibble result
+
+reg			[ 3: 0]	RESULT_LOWER;							// Store lower nibble result
 
 wire		[ 3: 0]	PART_SHIFT;								// Partial result for shift operations
 wire		[ 3: 0]	PART_RESULT;							// Partial result from the ALU operations
@@ -39,6 +43,11 @@ wire		[ 1: 0]	PART_FLAGS;								// Partial flags C, V from ALU operations
 initial begin
 	STATE = STATE_LOWER;
 end
+
+
+assign RESULT = { PART_RESULT, RESULT_LOWER };
+
+assign OUTFLAGS	= { S, Z, FALSE, H, FALSE, OPCODE inside { ALU_ADD, ALU_ADC, ALU_SUB, ALU_SBC, ALU_CP } ? V : P, N, C };
 
 always @(posedge CLK) begin
 
@@ -53,15 +62,11 @@ always @(posedge CLK) begin
 					ALU_SRA:	OP_CARRY	<= OP1[7];
 					ALU_SRL:	OP_CARRY	<= 1'b1;					
 				endcase
+				N	<= FALSE;
 				if (ENABLE) 	STATE		<= STATE_UPPER;
 			end
 			STATE_UPPER: begin
 				RESULT_LOWER	<= PART_SHIFT;
-				STATE			<= STATE_RESULT;
-			end
-			STATE_RESULT: begin
-				RESULT			<= { PART_RESULT, RESULT_LOWER };
-				OUTFLAGS		<= { S_FLAG, Z_FLAG, 3'b0, P_FLAG, 1'b0, PART_FLAGS[1] };
 				STATE			<= STATE_LOWER;
 			end
 		endcase
@@ -76,15 +81,11 @@ always @(posedge CLK) begin
 					ALU_SLA:	OP_CARRY	<= 1'b0;
 					ALU_SLL:	OP_CARRY	<= 1'b1;					
 				endcase
+				N	<= FALSE;
 				if (ENABLE) 	STATE		<= STATE_UPPER;
 			end
 			STATE_UPPER: begin
 				RESULT_LOWER	<= PART_SHIFT;
-				STATE			<= STATE_RESULT;
-			end
-			STATE_RESULT: begin
-				RESULT			<= { PART_RESULT, RESULT_LOWER };
-				OUTFLAGS		<= { S_FLAG, Z_FLAG, 3'b0, P_FLAG, 1'b0, PART_FLAGS[1] };
 				STATE			<= STATE_LOWER;
 			end
 		endcase
@@ -93,21 +94,17 @@ always @(posedge CLK) begin
 	ALU_DAA: begin
 		case(STATE)
 			STATE_LOWER: begin
-				OP1_HALF		<= OP1[3:0];
-				OP_CARRY		<= INFLAGS[FLAG_H];
-				if (ENABLE) 	STATE <= STATE_UPPER;
+				OP1_HALF	<= OP1[3:0];
+				OP_CARRY	<= INFLAGS[FLAG_H];
+				N			<= FALSE;
+				if (ENABLE) STATE <= STATE_UPPER;
 			end
 			STATE_UPPER: begin
 				RESULT_LOWER	<= PART_RESULT;
-				H_FLAG			<= PART_FLAGS[1];
+				H				<= PART_FLAGS[1];
 
 				OP1_HALF		<= OP1[7:4];
 				OP_CARRY		<= INFLAGS[FLAG_C];
-				STATE			<= STATE_RESULT;
-			end
-			STATE_RESULT: begin
-				RESULT			<= { PART_RESULT, RESULT_LOWER };
-				OUTFLAGS		<= { S_FLAG, Z_FLAG, 1'b0, H_FLAG, 1'b0, P_FLAG, INFLAGS[1], PART_FLAGS[1] };
 				STATE			<= STATE_LOWER;
 			end
 		endcase
@@ -116,14 +113,11 @@ always @(posedge CLK) begin
 	ALU_FLG: begin
 		case(STATE)
 			STATE_LOWER: begin
+				N			<= FALSE;
 				if (ENABLE) 	STATE <= STATE_UPPER;
 			end
 			STATE_UPPER: begin
 				RESULT_LOWER	<= PART_SHIFT;
-				STATE			<= STATE_RESULT;
-			end
-			STATE_RESULT: begin
-				OUTFLAGS		<= { S_FLAG, Z_FLAG, 1'b0, INFLAGS[4], 1'b0, P_FLAG, INFLAGS[1:0] };
 				STATE			<= STATE_LOWER;
 			end
 		endcase
@@ -134,8 +128,9 @@ always @(posedge CLK) begin
 	ALU_XOR:begin													// OPCODES AND, OR, XOR - 4, 5, 6
 		case(STATE)
 			STATE_LOWER: begin
-				OP1_HALF <= OP1[3:0];
-				OP2_HALF <= OP2[3:0];
+				OP1_HALF	<= OP1[3:0];
+				OP2_HALF	<= OP2[3:0];
+				N			<= FALSE;
 				if (ENABLE)	STATE	<= STATE_UPPER;
 			end
 			STATE_UPPER: begin
@@ -143,11 +138,6 @@ always @(posedge CLK) begin
 
 				OP1_HALF <= OP1[7:4];
 				OP2_HALF <= OP2[7:4];
-				STATE	 <= STATE_RESULT;
-			end
-			STATE_RESULT: begin
-				RESULT	 <= { PART_RESULT, RESULT_LOWER };
-				OUTFLAGS <= { S_FLAG, Z_FLAG, 3'b0, P_FLAG, 2'b0 };
 				STATE	 <= STATE_LOWER;
 			end
 		endcase
@@ -159,20 +149,16 @@ always @(posedge CLK) begin
 				OP1_HALF		<= OP1[3:0];
 				OP2_HALF		<= OP2[3:0];
 				OP_CARRY		<= OPCODE == ALU_SBC || OPCODE == ALU_ADC ? INFLAGS[FLAG_C] : 1'b0;
+				N				<= OPCODE == ALU_SUB || OPCODE == ALU_SBC ? TRUE : FALSE;
 				if (ENABLE) 	STATE	<= STATE_UPPER;
 			end
 			STATE_UPPER: begin
 				RESULT_LOWER	<= PART_RESULT;
-				H_FLAG			<= PART_FLAGS[1];
+				H				<= PART_FLAGS[1];
 
 				OP1_HALF		<= OP1[7:4];
 				OP2_HALF		<= OP2[7:4];
 				OP_CARRY		<= PART_FLAGS[1];
-				STATE			<= STATE_RESULT;
-			end
-			STATE_RESULT: begin															// OPCODE[1] indicates subtraction (including CP)
-				RESULT			<= OPCODE[2] ? OP1 : { PART_RESULT, RESULT_LOWER };		// OPCODE[2] indicates comparison (CP - 7)
-				OUTFLAGS		<= { S_FLAG, Z_FLAG, 1'b0, H_FLAG, 1'b0, ^PART_FLAGS, OPCODE[1], PART_FLAGS[1] };
 				STATE			<= STATE_LOWER;
 			end
 		endcase
@@ -184,23 +170,18 @@ end
 
 FLAGSETTER flag_instance (
 	.PART_RESULT( { PART_RESULT, RESULT_LOWER } ),
-	.Z(				Z_FLAG),
-	.S(				S_FLAG),
-	.P(				P_FLAG)
+	.PART_FLAGS(	PART_FLAGS),
+	.Z(				Z),
+	.S(				S),
+	.P(				P),
+	.V(				V),
+	.C(				C)
 );
 
 FLG8 flg_instance (
 	.OP1(			OP1),
 	.ENABLE(		OPCODE == ALU_FLG),
 	.PART_RESULT( { PART_RESULT, PART_SHIFT } )
-);
-
-DAA4 daa_instance (
-	.OP1(			OP1_HALF),
-	.CARRY(			OP_CARRY),
-	.ENABLE(		OPCODE == ALU_DAA),
-	.PART_RESULT(	PART_RESULT),
-	.PART_FLAGS(	PART_FLAGS)
 );
 
 SHL8 shl_instance (
@@ -216,6 +197,14 @@ SHR8 shr_instance (
 	.CARRY(			OP_CARRY),
 	.ENABLE(		OPCODE[4] &&  OPCODE[0]),
 	.PART_RESULT( { PART_RESULT, PART_SHIFT } ),
+	.PART_FLAGS(	PART_FLAGS)
+);
+
+DAA4 daa_instance (
+	.OP1(			OP1_HALF),
+	.CARRY(			OP_CARRY),
+	.ENABLE(		OPCODE == ALU_DAA),
+	.PART_RESULT(	PART_RESULT),
 	.PART_FLAGS(	PART_FLAGS)
 );
 
@@ -265,13 +254,18 @@ endmodule
 
 module FLAGSETTER (										 			// Set flags according to partial result ONLY
 	input		[ 7: 0]	PART_RESULT,
+	input		[ 1: 0]	PART_FLAGS,
 	output		Z,													// So only the S, Z and P flags are set
 	output		S,
-	output		P
+	output		P,
+	output		V,
+	output		C
 );
 	assign		Z = PART_RESULT == 0;
 	assign		S = PART_RESULT[7];
 	assign		P = ~^PART_RESULT;
+	assign		V = PART_FLAGS[0];
+	assign		C = PART_FLAGS[1];
 
 endmodule
 
