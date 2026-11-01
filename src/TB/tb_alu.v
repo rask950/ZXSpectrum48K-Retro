@@ -18,9 +18,9 @@ module top (
 	reg			[ 7: 0] ALU_OUTFLAGS;								// Individual output flags
 	
 	initial begin
-		ALU_OPCODE = ALU_ADC;
+		ALU_OPCODE = ALU_AND;
 		ALU_OP1 = 8'h08;
-		ALU_OP2 = 8'hC8;
+		ALU_OP2 = 8'h78;
 		ALU_INFLAGS = 1'b1;
 
 		#10 $display("operation %d + %d", ALU_OP1, 	ALU_OP2);

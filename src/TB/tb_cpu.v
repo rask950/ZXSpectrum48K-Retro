@@ -20,7 +20,7 @@ initial begin
 	mem[ 4] = 129;
 
 	#1 $monitor("ADDRESS %h - DATA %d", CPU_ADDRESS_BUS, CPU_DATA_BUS );
-	#1 $monitor("PC %h BC %h HL %h AF %h ALU [%d] OP2 %h", z80.REG.R16[12], z80.REG.R16[0], z80.REG.R16[2], z80.REG.R16[3], z80.ZALU.STATE, z80.ZALU.OP2 );
+	#1 $monitor("PC %h BC %h HL %h AF %h ALU [%d] OP1 %h OP2 %h R %h", z80.REG.R16[12], z80.REG.R16[0], z80.REG.R16[2], z80.REG.R16[3], z80.ZALU.STATE, z80.ZALU.OP1, z80.ZALU.OP2, z80.ZALU.RESULT );
 
 end
 
