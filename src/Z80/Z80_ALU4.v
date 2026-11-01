@@ -135,6 +135,7 @@ always @(posedge CLK) begin
 			end
 			STATE_UPPER: begin
 				RESULT_LOWER <= PART_RESULT;
+				H			 <= FALSE;
 
 				OP1_HALF <= OP1[7:4];
 				OP2_HALF <= OP2[7:4];
@@ -230,21 +231,24 @@ AND4 and_instance (
 	.OP1(			OP1_HALF),
 	.OP2(			OP2_HALF),
 	.ENABLE(		OPCODE == ALU_AND),
-	.PART_RESULT(	PART_RESULT)
+	.PART_RESULT(	PART_RESULT),
+	.PART_FLAGS(	PART_FLAGS)
 );
 
 OR4 or_instance (
 	.OP1(			OP1_HALF),
 	.OP2(			OP2_HALF),
 	.ENABLE(		OPCODE == ALU_OR),
-	.PART_RESULT(	PART_RESULT)
+	.PART_RESULT(	PART_RESULT),
+	.PART_FLAGS(	PART_FLAGS)
 );
 
 XOR4 xor_instance (
 	.OP1(			OP1_HALF),
 	.OP2(			OP2_HALF),
 	.ENABLE(		OPCODE == ALU_XOR),
-	.PART_RESULT(	PART_RESULT)
+	.PART_RESULT(	PART_RESULT),
+	.PART_FLAGS(	PART_FLAGS)
 );
 
 endmodule
@@ -264,7 +268,7 @@ module FLAGSETTER (										 			// Set flags according to partial result ONLY
 	assign		Z = PART_RESULT == 0;
 	assign		S = PART_RESULT[7];
 	assign		P = ~^PART_RESULT;
-	assign		V = PART_FLAGS[0];
+	assign		V =  ^PART_FLAGS;
 	assign		C = PART_FLAGS[1];
 
 endmodule
@@ -419,7 +423,8 @@ module AND4(
 	input		[ 3: 0]	OP1,
 	input		[ 3: 0]	OP2,
 	input  				ENABLE,
-	output		[ 3: 0]	PART_RESULT
+	output		[ 3: 0]	PART_RESULT,
+	output 		[ 1: 0]	PART_FLAGS
 );
 
 	reg			[ 3: 0]	r;
@@ -432,7 +437,8 @@ AND1 and2( r[2], OP1[2], OP2[2]);
 
 AND1 and3( r[3], OP1[3], OP2[3]);
 
-assign PART_RESULT	= ENABLE ?	  r : 4'bz;
+assign PART_RESULT	= ENABLE ?	   r : 4'bz;
+assign PART_FLAGS   = ENABLE ?  2'b0 : 2'bz;
 
 endmodule
 
@@ -443,7 +449,8 @@ module OR4(
 	input		[ 3: 0]	OP1,
 	input		[ 3: 0]	OP2,
 	input  				ENABLE,
-	output		[ 3: 0]	PART_RESULT
+	output		[ 3: 0]	PART_RESULT,
+	output 		[ 1: 0]	PART_FLAGS
 );
 
 	reg			[ 3: 0]	r;
@@ -456,7 +463,8 @@ OR1 or2( r[2], OP1[2], OP2[2]);
 
 OR1 or3( r[3], OP1[3], OP2[3]);
 
-assign PART_RESULT	= ENABLE ?	  r : 4'bz;
+assign PART_RESULT	= ENABLE ?	   r : 4'bz;
+assign PART_FLAGS   = ENABLE ?  2'b0 : 2'bz;
 
 endmodule
 
@@ -467,7 +475,8 @@ module XOR4(
 	input		[ 3: 0]	OP1,
 	input		[ 3: 0]	OP2,
 	input  				ENABLE,
-	output		[ 3: 0]	PART_RESULT
+	output		[ 3: 0]	PART_RESULT,
+	output 		[ 1: 0]	PART_FLAGS
 );
 
 	reg			[ 3: 0]	r;
@@ -480,7 +489,8 @@ XOR1 xor2( r[2], OP1[2], OP2[2]);
 
 XOR1 xor3( r[3], OP1[3], OP2[3]);
 
-assign PART_RESULT	= ENABLE ?	  r : 4'bz;
+assign PART_RESULT	= ENABLE ?	   r : 4'bz;
+assign PART_FLAGS   = ENABLE ?  2'b0 : 2'bz;
 
 endmodule
 

@@ -18,10 +18,10 @@ module top (
 	reg			[ 7: 0] ALU_OUTFLAGS;								// Individual output flags
 	
 	initial begin
-		ALU_OPCODE = ALU_AND;
-		ALU_OP1 = 8'h08;
+		ALU_OPCODE = ALU_DAA;
+		ALU_OP1 = 8'h04;
 		ALU_OP2 = 8'h78;
-		ALU_INFLAGS = 1'b1;
+		ALU_INFLAGS = 1'b0;
 
 		#10 $display("operation %d + %d", ALU_OP1, 	ALU_OP2);
 		#10 $monitor("alu [%d] %h %h %h - PT %b OUT %b", ZALU.STATE, ZALU.RESULT, ZALU.PART_SHIFT, ZALU.PART_RESULT, ZALU.PART_FLAGS, ALU_OUTFLAGS );
