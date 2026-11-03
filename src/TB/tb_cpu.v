@@ -29,7 +29,8 @@ end
 
 always @(posedge sys_clk) begin
 	cnt	<= cnt + 1;
-	#1 $display("[%h] PC %h M1%b MQ%b RD%b RF%b DB%h BC %h AF %h ALU [%d] OP1 %h OP2 %h R %h", cnt, z80.REG.R16[12], CPU_M1, CPU_MREQ, CPU_RD, CPU_RFSH, CPU_DATA_BUS, z80.REG.R16[0], z80.REG.R16[3], z80.ZALU.STATE, z80.ZALU.OP1, z80.ZALU.OP2, z80.ZALU.RESULT );
+	#1 $display("[%h] %h PC %h M1%b MQ%b RD%b RF%b DB%h BC %h AF %h", cnt, z80.FSM_STATE, z80.REG.R16[12], CPU_M1, CPU_MREQ, CPU_RD, CPU_RFSH, CPU_DATA_BUS, z80.REG.R16[0], z80.REG.R16[3] );
+//	#1 $display("ALU [%d][%b] OP1 %h OP2 %h R %h", z80.ZALU.STATE, z80.ZALU.ENABLE, z80.ZALU.OP1, z80.ZALU.OP2, z80.ZALU.RESULT );
 end
 
 ////////////////////////////////////////////////////////////////////////
