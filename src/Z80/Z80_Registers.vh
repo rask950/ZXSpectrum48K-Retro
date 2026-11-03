@@ -8,7 +8,7 @@
     } REGS;
 
 	typedef struct packed {
-		reg [ 5: 0]M;
+		reg [ 3: 0]M;
 		reg [ 3: 0]T;
 	} FSM_REG;
 
