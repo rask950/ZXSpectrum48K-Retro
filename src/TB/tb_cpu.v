@@ -23,7 +23,7 @@ initial begin
 	mem[ 4] = 129;
 	mem[ 5] = 118;
 
-	#1 $monitor("[%h] %h PC %h M1%b MQ%b RD%b RF%b DB%h BC %h AF %h", cnt, z80.FSM_STATE, z80.REG.R16[12], CPU_M1, CPU_MREQ, CPU_RD, CPU_RFSH, CPU_DATA_BUS, z80.REG.R16[0], z80.REG.R16[3] );
+	#1 $monitor("[%h] %h PC %h M1%b MQ%b RD%b RF%b DB%h OP%h BC %h AF %h - ALU [%b] OP1 %h OP2 %h R %h", cnt, z80.FSM_STATE, z80.REG.R16[12], CPU_M1, CPU_MREQ, CPU_RD, CPU_RFSH, CPU_DATA_BUS, z80.OPCODE_REG, z80.REG.R16[0], z80.REG.R16[3], z80.ZALU.ENABLE, z80.ZALU.OP1, z80.ZALU.OP2, z80.ZALU.RESULT );
 
 end
 

@@ -2,7 +2,6 @@
 
 module Z80_ALU4 (
 	
-	input					CLK,
 	input	reg				ENABLE,
 	input	reg		[ 4: 0]	OPCODE,							// This is the ALU opcode (NOT the CPU opcode)
 	input	reg		[ 7: 0]	OP1,
@@ -14,11 +13,6 @@ module Z80_ALU4 (
 
 `include "..\\Global.vh"
 
-localparam			STATE_IDLE	 = 2'b00;					// Idle state
-localparam			STATE_LOWER  = 2'b01;					// Lower nibble state
-localparam			STATE_UPPER  = 2'b10;					// Upper nibble state
-localparam			STATE_RESULT = 2'b11;					// Result
-
 reg					S;										// Individual output flags
 reg					Z;
 reg					H;
@@ -26,8 +20,6 @@ reg					P;
 reg					V;
 reg					N;
 reg					C;
-
-reg 		[ 1: 0]	STATE;
 
 reg			[ 3: 0]	OP1_HALF;								// Inputs to primitives
 reg			[ 3: 0]	OP2_HALF;
@@ -40,85 +32,72 @@ wire		[ 3: 0]	PART_SHIFT;								// Partial result for shift operations
 wire		[ 3: 0]	PART_RESULT;							// Partial result from the ALU operations
 wire		[ 1: 0]	PART_FLAGS;								// Partial flags C, V from ALU operations
 
-initial begin
-	STATE = STATE_LOWER;
-end
-
-
 assign RESULT = { PART_RESULT, RESULT_LOWER };
 
 assign OUTFLAGS	= { S, Z, FALSE, H, FALSE, OPCODE inside { ALU_ADD, ALU_ADC, ALU_SUB, ALU_SBC, ALU_CP } ? V : P, N, C };
 
-always @(posedge CLK) begin
+always @(ENABLE) begin
 
 	casez(OPCODE)
 
 	ALU_SHR: begin
-		case(STATE)
-			STATE_LOWER: begin
+		case(ENABLE)
+			TRUE: begin
 				case(OPCODE)
-					ALU_RRC:	OP_CARRY	<= OP1[0];
-					ALU_RR:		OP_CARRY	<= INFLAGS[0];
-					ALU_SRA:	OP_CARRY	<= OP1[7];
-					ALU_SRL:	OP_CARRY	<= 1'b1;					
+					ALU_RRC:	OP_CARRY	= OP1[0];
+					ALU_RR:		OP_CARRY	= INFLAGS[0];
+					ALU_SRA:	OP_CARRY	= OP1[7];
+					ALU_SRL:	OP_CARRY	= 1'b1;					
 				endcase
-				N	<= FALSE;
-				if (ENABLE) 	STATE		<= STATE_UPPER;
+				N				= FALSE;
 			end
-			STATE_UPPER: begin
-				RESULT_LOWER	<= PART_SHIFT;
-				STATE			<= STATE_LOWER;
+			FALSE: begin
+				RESULT_LOWER	= PART_SHIFT;
 			end
 		endcase
 	end
 
 	ALU_SHL: begin
-		case(STATE)
-			STATE_LOWER: begin
+		case(ENABLE)
+			TRUE: begin
 				case(OPCODE)
-					ALU_RLC:	OP_CARRY	<= OP1[7];
-					ALU_RL:		OP_CARRY	<= INFLAGS[0];
-					ALU_SLA:	OP_CARRY	<= 1'b0;
-					ALU_SLL:	OP_CARRY	<= 1'b1;					
+					ALU_RLC:	OP_CARRY	= OP1[7];
+					ALU_RL:		OP_CARRY	= INFLAGS[0];
+					ALU_SLA:	OP_CARRY	= 1'b0;
+					ALU_SLL:	OP_CARRY	= 1'b1;					
 				endcase
-				N	<= FALSE;
-				if (ENABLE) 	STATE		<= STATE_UPPER;
+				N				= FALSE;
 			end
-			STATE_UPPER: begin
-				RESULT_LOWER	<= PART_SHIFT;
-				STATE			<= STATE_LOWER;
+			FALSE: begin
+				RESULT_LOWER	= PART_SHIFT;
 			end
 		endcase
 	end
 
 	ALU_DAA: begin
-		case(STATE)
-			STATE_LOWER: begin
-				OP1_HALF	<= OP1[3:0];
-				OP_CARRY	<= INFLAGS[FLAG_H];
-				N			<= FALSE;
-				if (ENABLE) STATE <= STATE_UPPER;
+		case(ENABLE)
+			TRUE: begin
+				OP1_HALF		= OP1[3:0];
+				OP_CARRY		= INFLAGS[FLAG_H];
+				N				= FALSE;
 			end
-			STATE_UPPER: begin
-				RESULT_LOWER	<= PART_RESULT;
-				H				<= PART_FLAGS[1];
+			FALSE: begin
+				RESULT_LOWER	= PART_RESULT;
+				H				= PART_FLAGS[1];
 
-				OP1_HALF		<= OP1[7:4];
-				OP_CARRY		<= INFLAGS[FLAG_C];
-				STATE			<= STATE_LOWER;
+				OP1_HALF		= OP1[7:4];
+				OP_CARRY		= INFLAGS[FLAG_C];
 			end
 		endcase
 	end
 
 	ALU_FLG: begin
-		case(STATE)
-			STATE_LOWER: begin
-				N			<= FALSE;
-				if (ENABLE) 	STATE <= STATE_UPPER;
+		case(ENABLE)
+			TRUE: begin
+				N				= FALSE;
 			end
-			STATE_UPPER: begin
-				RESULT_LOWER	<= PART_SHIFT;
-				STATE			<= STATE_LOWER;
+			FALSE: begin
+				RESULT_LOWER	= PART_SHIFT;
 			end
 		endcase
 	end
@@ -126,41 +105,37 @@ always @(posedge CLK) begin
 	ALU_AND,
 	ALU_OR,
 	ALU_XOR:begin													// OPCODES AND, OR, XOR - 4, 5, 6
-		case(STATE)
-			STATE_LOWER: begin
-				OP1_HALF	<= OP1[3:0];
-				OP2_HALF	<= OP2[3:0];
-				N			<= FALSE;
-				if (ENABLE)	STATE	<= STATE_UPPER;
+		case(ENABLE)
+			TRUE: begin
+				OP1_HALF		= OP1[3:0];
+				OP2_HALF		= OP2[3:0];
+				N				= FALSE;
 			end
-			STATE_UPPER: begin
-				RESULT_LOWER <= PART_RESULT;
-				H			 <= FALSE;
+			FALSE: begin
+				RESULT_LOWER	= PART_RESULT;
+				H				= FALSE;
 
-				OP1_HALF <= OP1[7:4];
-				OP2_HALF <= OP2[7:4];
-				STATE	 <= STATE_LOWER;
+				OP1_HALF		= OP1[7:4];
+				OP2_HALF		= OP2[7:4];
 			end
 		endcase
 	end
 
 	default: begin													// OPCODES ADD, ADC, SUB, SBC, CP - 0, 1, 2, 3, 7
-		case(STATE)
-			STATE_LOWER: begin
-				OP1_HALF		<= OP1[3:0];
-				OP2_HALF		<= OP2[3:0];
-				OP_CARRY		<= OPCODE == ALU_SBC || OPCODE == ALU_ADC ? INFLAGS[FLAG_C] : 1'b0;
-				N				<= OPCODE == ALU_SUB || OPCODE == ALU_SBC ? TRUE : FALSE;
-				if (ENABLE) 	STATE	<= STATE_UPPER;
+		case(ENABLE)
+			TRUE: begin
+				OP1_HALF		= OP1[3:0];
+				OP2_HALF		= OP2[3:0];
+				OP_CARRY		= OPCODE inside { ALU_SBC, ALU_ADC } ? INFLAGS[FLAG_C] : 1'b0;
+				N				= OPCODE inside { ALU_SUB, ALU_SBC } ? TRUE : FALSE;
 			end
-			STATE_UPPER: begin
-				RESULT_LOWER	<= PART_RESULT;
-				H				<= PART_FLAGS[1];
+			FALSE: begin
+				RESULT_LOWER	= PART_RESULT;
+				H				= PART_FLAGS[1];
 
-				OP1_HALF		<= OP1[7:4];
-				OP2_HALF		<= OP2[7:4];
-				OP_CARRY		<= PART_FLAGS[1];
-				STATE			<= STATE_LOWER;
+				OP1_HALF		= OP1[7:4];
+				OP2_HALF		= OP2[7:4];
+				OP_CARRY		= PART_FLAGS[1];
 			end
 		endcase
 	end

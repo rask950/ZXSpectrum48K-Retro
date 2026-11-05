@@ -78,7 +78,6 @@ REG_DECODE ZREG(
 	reg							ALU_ENABLE;								// ALU enable signal
 
 Z80_ALU4 ZALU (
-	.CLK(						CLK),
 	.OPCODE(					ALU_OPCODE),
 	.OP1(						ALU_OP1),
 	.OP2(						ALU_OP2),
@@ -1567,19 +1566,16 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		case(FSM_STATE)
 
-		STATE_M1T3H: begin
-			ALU_ENABLE			<= TRUE;
-		end
-
 		STATE_M1T3L: begin
 			CPU_REG_NUM			<= 			OPCODE_REG[2:0];
 			ALU_OPCODE 			<= { 2'b0,	OPCODE_REG[5:3] };			// Initialize ALU
 			ALU_OP1				<=`CUR_A;
 			ALU_INFLAGS			<=`CUR_F;
 			ALU_OP2				<= REG.R8[REG8_INDEX];
+			ALU_ENABLE			<= TRUE;
 		end
 
-        STATE_M1T4H: begin
+		STATE_M1T4H: begin
 			ALU_ENABLE			<= FALSE;
 		end
 
