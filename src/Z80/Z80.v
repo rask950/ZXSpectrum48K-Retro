@@ -1539,24 +1539,28 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 			FSM_NEXT_STATE		<= STATE_MR1T1H;
 		end
 
-
 		STATE_MR1T1H: begin												// MR(3) PC to address bus
 			ADDRESS_BUS				<=`REG_PC;
 			{ INC_DIR, INC_BITS }	<= { TRUE, TRUE };					// Set incrementer to add 16 bits
 		end
 
-		STATE_MR1T3H: begin												// Update PC and initialize ALU
-		   `REG_PC				<= INC_OUT;
+		STATE_MR1T3H: begin
+			`REG_PC				<= INC_OUT;
 			ALU_OPCODE  		<= { 2'b0, OPCODE_REG[5:3] };
 			ALU_OP1				<=`CUR_A;
 			ALU_INFLAGS			<=`CUR_F;
 			ALU_OP2				<= DATA_BUS;
+			ALU_ENABLE			<= TRUE;
 		end
 
 		STATE_MR1T3L: begin												// Store result and flags back in AF/AF'
+			ALU_ENABLE			<= FALSE;
+			FSM_LAST_M			<= TRUE;								// Instruction complete
+		end
+
+		STATE_M1T1H: begin
 		   `CUR_A				<= ALU_RESULT;
 		   `CUR_F				<= ALU_OUTFLAGS;
-			FSM_LAST_M			<= TRUE;								// Instruction complete
 		end
 
 		endcase
