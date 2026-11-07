@@ -586,7 +586,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_MR1T1H: begin												// MR(3) Read displacement
 			ADDRESS_BUS			<=`REG_PC;
-			{ INC_DIR, INC_BITS}	<= { TRUE, TRUE };					// Set incrementer to add 16 bits
+		  { INC_DIR, INC_BITS}	<= { TRUE, TRUE };						// Set incrementer to add 16 bits
 		end
 
 		STATE_MR1T3L: begin
@@ -599,28 +599,36 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		STATE_GN1T1H: begin												// MG(5) For displacement and timing purposes
 			ALU_OPCODE			<= ALU_ADC;								// Prepare to add displacement
 			ALU_OP1				<=`REG_Z;								// To temp reg
-			ALU_INFLAGS			<= 8'd0;								// Clear carry
+			ALU_INFLAGS			<= 8'd0;								// Clear carry for addition
+			ALU_ENABLE			<= TRUE;								// Enable the ALU for the operation
 		end
 
 		STATE_GN1T1L: begin
-		   `REG_Z				<= ALU_RESULT;							// Low byte result to Z
+			ALU_ENABLE			<= FALSE;								// Enable the ALU for the operation
 			FSM_NEXT_STATE.T	<= STATE_T2H;
 		end
 
 		STATE_GN1T2H: begin
-			ALU_OP1				<=`REG_W;
-			ALU_OP2				<= { 8{ ALU_OP2[7] }};					// This is 255 or 0 depending on the sign of OP2
-			ALU_INFLAGS			<= ALU_OUTFLAGS;						// Also need the flags for any carry
+		   `REG_Z				<= ALU_RESULT;							// Low byte result to Z
 		end
 
 		STATE_GN1T2L: begin
-		   `REG_W				<= ALU_RESULT;							// High byte result to W - Ignore flags
+			ALU_OP1				<=`REG_W;
+			ALU_OP2				<= { 8{ ALU_OP2[7] }};					// This is 255 or 0 depending on the sign of OP2
+			ALU_INFLAGS			<= ALU_OUTFLAGS;						// Also need the flags for any carry
+			ALU_ENABLE			<= TRUE;
 			FSM_NEXT_STATE.T	<= STATE_T3H;
 		end
 
-		STATE_GN1T3L:
-			FSM_NEXT_STATE.T	<= STATE_T4H;							// Timing
+		STATE_GN1T3H: begin
+			ALU_ENABLE			<= FALSE;								// Disable the ALU after operation	
+		end	
 
+		STATE_GN1T3L: begin
+		   `REG_W				<= ALU_RESULT;							// High byte result to W - Ignore flags
+			FSM_NEXT_STATE.T	<= STATE_T4H;							// Timing
+		end
+		
 		STATE_GN1T4L:
 			FSM_NEXT_STATE.T	<= STATE_T5H;
 
@@ -658,7 +666,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_MR1T1H: begin												// MR(3)
 			ADDRESS_BUS			<=`REG_PC;			 					// Read displacement
-			{ INC_DIR, INC_BITS}	<= { TRUE, TRUE };					// Set incrementer to add 16 bits
+		  { INC_DIR, INC_BITS}	<= { TRUE, TRUE };					// Set incrementer to add 16 bits
 		end
 
 		STATE_MR1T3L: begin												// Add displacement
@@ -1472,42 +1480,43 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_MR1T3L: begin
 		   `REG_PC				<= INC_OUT;								// Add (sign extended) displacement to base
-			ALU_OPCODE			<= ALU_ADC;								// Prepare to add displacement
-			ALU_OP1				<=`REG_Z;								// To temp reg
 			ALU_OP2				<= DATA_BUS;							// Pick up displacement byte
-			ALU_INFLAGS			<= 8'd0;								// Clear carry
-			ALU_ENABLE			<= TRUE;
 			FSM_NEXT_STATE		<= STATE_GN1T1H;						// Now start a new cycle for calculation
 		end
 
 
 		STATE_GN1T1H: begin												// MG(5) For displacement and timing purposes
-			ALU_ENABLE			<= FALSE;								// ALU complete
+			ALU_OPCODE			<= ALU_ADC;								// Prepare to add displacement
+			ALU_OP1				<=`REG_Z;								// To temp reg
+			ALU_INFLAGS			<= 8'd0;								// Clear carry
+			ALU_ENABLE			<= TRUE;
 		end
 
 		STATE_GN1T1L: begin
-		   `REG_Z				<= ALU_RESULT;							// Low byte result to Z
+			ALU_ENABLE			<= FALSE;								// ALU complete
 			FSM_NEXT_STATE.T	<= STATE_T2H;
 		end
 
 		STATE_GN1T2H: begin
+		   `REG_Z				<= ALU_RESULT;							// Low byte result to Z
+		end
+
+		STATE_GN1T2L: begin
 			ALU_OP1				<=`REG_W;								// High byte of base address
 			ALU_OP2				<= { 8 { ALU_OP2[7] }};					// This is 255 or 0 depending on the sign of OP2
 			ALU_INFLAGS			<= ALU_OUTFLAGS;						// Also need the flags for any carry
 			ALU_ENABLE			<= TRUE;
-		end
-
-		STATE_GN1T2L: begin
-			ALU_ENABLE			<= FALSE;								// ALU complete
 			FSM_NEXT_STATE.T	<= STATE_T3H;
 		end
 
 		STATE_GN1T3H: begin
-		   `REG_W				<= ALU_RESULT;							// High byte result to W - Ignore flags
+			ALU_ENABLE			<= FALSE;								// ALU complete
 		end	
 
-		STATE_GN1T3L:
+		STATE_GN1T3L: begin
+		   `REG_W				<= ALU_RESULT;							// High byte result to W - Ignore flags
 			FSM_NEXT_STATE.T	<= STATE_T4H;							// Timing
+		end
 
 		STATE_GN1T4L:
 			FSM_NEXT_STATE.T	<= STATE_T5H;
