@@ -34,7 +34,7 @@ parameter STATE_M1T5L	= 8'b00_00_1010;					//  A
 parameter STATE_M1T6H	= 8'b00_00_1011;					//  B
 parameter STATE_M1T6L	= 8'b00_00_1100;					//  C	
 
-parameter STATE_NIT1H	= 8'b00_01_0001;					// 11 - 01 - NMI/INT1/HALT M1 Cycle (fake M1 cycle)
+parameter STATE_NIT1H	= 8'b00_01_0001;					// 11 - 01 - NMI/INT1/HALT M1 Cycle (pseudo M1 cycle)
 parameter STATE_NIT1L	= 8'b00_01_0010;					// 12
 parameter STATE_NIT2H	= 8'b00_01_0011;					// 13
 parameter STATE_NIT2L	= 8'b00_01_0100;					// 14
@@ -42,6 +42,8 @@ parameter STATE_NIT3H	= 8'b00_01_0101;					// 15
 parameter STATE_NIT3L	= 8'b00_01_0110;					// 16
 parameter STATE_NIT4H	= 8'b00_01_0111;					// 17
 parameter STATE_NIT4L	= 8'b00_01_1000;					// 18
+
+parameter STATE_MNT1H	= 8'b00_0z_1000;					// z8 - Match M1 and N1 cycles for parallelism
 
 parameter STATE_GN1T1H	= 8'b00_10_0001;					// 21 - 10 - General Cycle 1 - 16 bit addition etc
 parameter STATE_GN1T1L	= 8'b00_10_0010;					// 22
