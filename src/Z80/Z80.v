@@ -1741,24 +1741,26 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 	PLA_IDC_R: begin													// M1(4) INC/DEC r
 
-		case(FSM_STATE)
+		casez(FSM_STATE)
 
 		STATE_M1T3L: begin												// Decode register
 			CPU_REG_NUM			<= OPCODE_REG[5:3];
 		end
 		
 		STATE_M1T4H: begin												// Read the base address
-			ALU_OPCODE			<= OPCODE_REG[0] ? ALU_SUB
-												 : ALU_ADD;
+			ALU_OPCODE			<= { 6'b0, OPCODE_REG[0], 1'b0 };		// Build ALU opcode for ADD (0)/SUB (2)
 			ALU_OP1				<= REG.R8[REG8_INDEX];
-			ALU_INFLAGS			<=`CUR_F;
 			ALU_OP2				<= 8'h01;								// Value to add/sub
+			ALU_ENABLE			<= TRUE;								// Low nibble
 		end
 
-		STATE_M1T4L: begin												// Now write back the result
+		STATE_M1T4L: begin
+			ALU_ENABLE			<= FALSE;								// High nibble
+		end
+
+		STATE_MN1T1H: begin												// Now write back the result
 			REG.R8[REG8_INDEX]	<= ALU_RESULT;
 		   `CUR_F[7:1]			<= ALU_OUTFLAGS[7:1];					// Set flags except C
-			FSM_LAST_M			<= TRUE;
 		end
 
 		endcase
@@ -1809,30 +1811,19 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
         case(FSM_STATE)
 
 		STATE_M1T3L: begin
-
-			ALU_OPCODE			<= ALU_ADD;								// Prepare to add to A
-			ALU_OP1				<= `CUR_A;
-			ALU_OP2				<= 8'h00;
-
+			ALU_OPCODE			<= ALU_DAA;								// Prepare to adjust to A
+			ALU_OP1				<=`CUR_A;
+			ALU_INFLAGS			<=`CUR_F;
+			ALU_ENABLE			<= TRUE;								// Low nibble
 		end
 
 		STATE_M1T4H: begin
-			if (`CUR_F[FLAG_N]) begin									// If the previous operation was a subtraction
-				if (`CUR_F[FLAG_H] || `CUR_A[3:0] > 4'd5) begin
-					ALU_OP2[3:0]<= 8'hA;
-				end				
-			end else begin
-				if (`CUR_F[FLAG_H] || `CUR_A[3:0] > 4'd9) begin
-					ALU_OP2[3:0]<= 8'h6;
-				end
-				if (`CUR_F[FLAG_C] || `CUR_A[7:4] > 4'd9) begin			// Test upper nibble of A
-					ALU_OP2[7:4]	<= 8'h6;
-				end
-			end	
+			ALU_ENABLE			<= FALSE;								// High nibble
 		end
 
 		STATE_M1T4L: begin
            `CUR_A				<= ALU_RESULT;
+           `CUR_F				<= ALU_OUTFLAGS;						// Update flags
  			FSM_LAST_M			<= TRUE;
 		end
 		
@@ -1850,16 +1841,21 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		case(FSM_STATE)
 		
+		STATE_M1T3L: begin
+			ALU_OPCODE			<= ALU_SUB;								// NEG is CPL then +1
+			ALU_OP1				<=~`CUR_A;								// CPL A
+			ALU_OP2				<= 8'hFF;								// We subtract -1 so the N flag will be set
+			ALU_INFLAGS			<= `CUR_F;
+			ALU_ENABLE			<= TRUE;								// Low nibble
+		end
+
 		STATE_M1T4H: begin
-		   ALU_OPCODE			<= ALU_ADD;								// NEG is CPL then +1
-		   ALU_OP1				<=~`CUR_A;								// CPL A
-		   ALU_OP2				<= 8'd1;
-		   ALU_INFLAGS			<= `CUR_F;
+			ALU_ENABLE			<= FALSE;								// High nibble
 		end
 
 		STATE_M1T4L: begin
 		   `CUR_A				<= ALU_RESULT;
-		   `CUR_F				<= ALU_OUTFLAGS | 2;					// Flags + n set
+		   `CUR_F				<= ALU_OUTFLAGS;						// Flags + n set
 			FSM_LAST_M			<= TRUE;
 		end
 
@@ -1869,7 +1865,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		////////////////////////////////////////////////////////////////////////////
 		// 16-Bit arithmetic group
 
-	PLA_ADHL_RR: begin													// M1(4) ADD HL,rr
+	PLA_ADHL_RR: begin													// M1(4) ADD HL,rr [4,4,3]
 
 		case(FSM_STATE)
 
@@ -1891,10 +1887,15 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_GN1T3L: begin
 			ALU_OPCODE			<= ALU_ADC;								//Add low bytes
-			ALU_OP1				<= `CUR_L;
-			ALU_OP2				<= `REG_Z;
+			ALU_OP1				<=`CUR_L;
+			ALU_OP2				<=`REG_Z;
 			ALU_INFLAGS			<= 8'd0;
+			ALU_ENABLE			<= TRUE;								// Low nibble
 			FSM_NEXT_STATE.T	<= STATE_T4H;
+		end
+
+		STATE_GN1T4H: begin
+			ALU_ENABLE			<= FALSE;								// High nibble
 		end
 
 		STATE_GN1T4L: begin
@@ -1908,7 +1909,12 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 			ALU_OP1				<= `CUR_H;
 			ALU_OP2				<= `REG_W;
 			ALU_INFLAGS			<= ALU_OUTFLAGS;
+			ALU_ENABLE			<= TRUE;								// Low nibble
 			FSM_NEXT_STATE.T	<= STATE_T2H;
+		end
+
+		STATE_GN2T1H: begin
+			ALU_ENABLE			<= FALSE;								// High nibble
 		end
 
 		STATE_GN2T2L: begin
@@ -1926,7 +1932,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		endcase
 	end
 
-	PLA_ASHL_RR: begin													// M1(4) ADC HL,rr (bit3=0)/SBC HL,rr (bit3=1)
+	PLA_ASHL_RR: begin													// M1(4) ADC HL,rr (bit3=0)/SBC HL,rr (bit3=1) [4,4,4,3]
 		case(FSM_STATE)
 
 		STATE_M1T4L: begin
@@ -1945,11 +1951,16 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		end
 
 		STATE_GN1T3L: begin
-			ALU_OPCODE			<= OPCODE_REG[3] ? ALU_ADC : ALU_SBC;
+			ALU_OPCODE			<= { 6'b0, OPCODE_REG[3], 1'b1 };		// ADC (1)/SBC (3) ALU opcode
 			ALU_OP1				<= `CUR_L;
 			ALU_OP2				<= `REG_Z;
 			ALU_INFLAGS			<= `CUR_F;
+			ALU_ENABLE			<= TRUE;								// Low nibble
 			FSM_NEXT_STATE.T	<= STATE_T4H;
+		end
+
+		STATE_GN1T4H: begin
+			ALU_ENABLE			<= FALSE;								// High nibble
 		end
 
 		STATE_GN1T4L: begin
@@ -1962,7 +1973,12 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 			ALU_OP1				<= `CUR_H;								// Now the high byte - same opcode
 			ALU_OP2				<= `REG_W;
 			ALU_INFLAGS			<= ALU_OUTFLAGS;
+			ALU_ENABLE			<= TRUE;								// Low nibble
 			FSM_NEXT_STATE.T	<= STATE_T2H;
+		end
+
+		STATE_GN2T1H: begin
+			ALU_ENABLE			<= FALSE;								// High nibble
 		end
 
 		STATE_GN2T2L: begin
@@ -1997,7 +2013,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_M1T6L: begin
 			REG.R16[REG16_INDEX]<= INC_OUT;
-			FSM_LAST_M			 <= TRUE;
+			FSM_LAST_M			<= TRUE;
 		end
 
 		endcase
@@ -2028,8 +2044,8 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 
 		STATE_MR1T1H: begin												// MR(3) Read immediate low byte
-			ADDRESS_BUS				<= `REG_PC;
-			{ INC_DIR, INC_BITS }	<= { TRUE, TRUE};					// Set incrementer add
+			ADDRESS_BUS			<=`REG_PC;
+		  { INC_DIR, INC_BITS }	<= { TRUE, TRUE};					// Set incrementer add
 		end
 
 		STATE_MR1T3H: begin
@@ -2056,18 +2072,20 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		endcase
 	end
 
-	PLA_DJNZ_N: begin													// M1(5) DJNZ n
+	PLA_DJNZ_N: begin													// M1(5) DJNZ n [5,3{,5}]
 
 		case(FSM_STATE)
 
 		STATE_M1T4L: begin
+			ALU_OPCODE			<= ALU_SUB;
+			ALU_OP1				<= `CUR_B;								// Value of B reg
+			ALU_OP2				<= 1;
+			ALU_ENABLE			<= TRUE;								// Low nibble
 			FSM_NEXT_STATE.T	<= STATE_T5H;							// We need to pick up the 1 byte displacement
 		end
 
 		STATE_M1T5H: begin												// Prepare for DEC B
-			ALU_OPCODE			<= ALU_SUB;
-			ALU_OP1				<= `CUR_B;								// Value of B reg
-			ALU_OP2				<= 1;									// Subtract 1
+			ALU_ENABLE			<= FALSE;								// High nibble
 		end
 
 		STATE_M1T5L: begin
@@ -2079,15 +2097,15 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_MR1T1H: begin												// MR(3) Read the displacement
 			ADDRESS_BUS			<= `REG_PC;
-			{ INC_DIR, INC_BITS }	<= { TRUE, TRUE};					// Set incrementer add
+		  { INC_DIR, INC_BITS }	<= { TRUE, TRUE};						// Set incrementer add
 		end
 
 		STATE_MR1T3L: begin												// Take jump if NZ, do not save flags
 		   `REG_PC				<= INC_OUT;								// Update PC
 		   `REG_Z				<= DATA_BUS;							// And read displacement into temp reg
 
-			if (ALU_OUTFLAGS[FLAG_Z])
-				FSM_LAST_M		<= TRUE;								// If Z then instruction is complete
+			if (ALU_OUTFLAGS[FLAG_Z])									// If B became zero
+				FSM_LAST_M		<= TRUE;								// Then instruction is complete
 			else
 				FSM_NEXT_STATE	<= STATE_GN1T1H;						// Start a general cycle to do calculation
 
@@ -2099,26 +2117,37 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 			ALU_OP1				<=`REG_PCL;
 			ALU_OP2				<=`REG_Z;
 			ALU_INFLAGS			<= 8'd0;
+			ALU_ENABLE			<= TRUE;								// Low nibble
 		end
-
-		STATE_GN1T1L: begin
-		   `REG_PCL				<= ALU_RESULT;							// Low byte result
+		
+		STATE_GN1T1L: begin	
+			ALU_ENABLE			<= FALSE;								// High nibble
 			FSM_NEXT_STATE.T	<= STATE_T2H;
 		end
 
 		STATE_GN1T2H: begin
-			ALU_OP1				<=`REG_PCH;
-			ALU_OP2				<= {8{ ALU_OP2[7] }};					// This is 255 or 0 depending on the sign of OP2
-			ALU_INFLAGS			<= ALU_OUTFLAGS;						// Also need the flags for any carry
+		   `REG_PCL				<= ALU_RESULT;							// Low byte result
 		end
 
 		STATE_GN1T2L: begin
-		   `REG_PCH				<= ALU_RESULT;							// High byte result to PC - Ignore flags
 			FSM_NEXT_STATE.T	<= STATE_T3H;
 		end
 
-		STATE_GN1T3L:
+		STATE_GN1T3H: begin												// Add displacement high byte to PC
+			ALU_OP1				<=`REG_PCH;
+			ALU_OP2				<= { 8 { ALU_OP2[7] }};					// This is 255 or 0 depending on the sign of OP2
+			ALU_INFLAGS			<= ALU_OUTFLAGS;						// Also need the flags for any carry
+			ALU_ENABLE			<= TRUE;								// Low nibble
+		end
+
+		STATE_GN1T3L: begin
+			ALU_ENABLE			<= FALSE;								// High nibble
 			FSM_NEXT_STATE.T	<= STATE_T4H;							// Timing
+		end
+
+		STATE_GN1T4H: begin
+		   `REG_PCH				<= ALU_RESULT;							// High byte result to PC - Ignore flags
+		end
 
 		STATE_GN1T4L:
 			FSM_NEXT_STATE.T	<= STATE_T5H;
@@ -2142,8 +2171,8 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 
 		STATE_MR1T1H: begin												// MR(3) Read data byte
-			ADDRESS_BUS				<= `REG_PC;
-			{ INC_DIR, INC_BITS }	<= { TRUE, TRUE};					// Set incrementer add 16 bits
+			ADDRESS_BUS			<= `REG_PC;
+		  { INC_DIR, INC_BITS }	<= { TRUE, TRUE};						// Set incrementer add 16 bits
 		end
 
 		STATE_MR1T3H: begin
@@ -2164,26 +2193,37 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 			ALU_OP1				<=`REG_PCL;
 			ALU_OP2				<=`REG_Z;
 			ALU_INFLAGS			<= 8'd0;
+			ALU_ENABLE			<= TRUE;								// Low nibble
 		end
 
 		STATE_GN1T1L: begin
-		   `REG_PCL				<= ALU_RESULT;							// Low byte result
+			ALU_ENABLE			<= FALSE;								// High nibble
 			FSM_NEXT_STATE.T	<= STATE_T2H;
 		end
 
 		STATE_GN1T2H: begin
-			ALU_OP1				<=`REG_PCH;
-			ALU_OP2				<= {8{ ALU_OP2[7] }};					// This is 255 or 0 depending on the sign of OP2
-			ALU_INFLAGS			<= ALU_OUTFLAGS;						// Also need the flags for any carry
+		   `REG_PCL				<= ALU_RESULT;							// Low byte result
 		end
 
 		STATE_GN1T2L: begin
-		   `REG_PCH				<= ALU_RESULT;							// High byte result to W - Ignore flags
 			FSM_NEXT_STATE.T	<= STATE_T3H;
+		end	
+
+		STATE_GN1T3H: begin
+			ALU_OP1				<=`REG_PCH;
+			ALU_OP2				<= { 8 { ALU_OP2[7] }};					// This is 255 or 0 depending on the sign of OP2
+			ALU_INFLAGS			<= ALU_OUTFLAGS;						// Also need the flags for any carry
+			ALU_ENABLE			<= TRUE;								// Low nibble
 		end
 
-		STATE_GN1T3L:
+		STATE_GN1T3L: begin
+			ALU_ENABLE			<= FALSE;								// High nibble
 			FSM_NEXT_STATE.T	<= STATE_T4H;
+		end
+
+		STATE_GN1T4H: begin
+		   `REG_PCH				<= ALU_RESULT;							// High byte result to W - Ignore flags
+		end
 
 		STATE_GN1T4L:
 			FSM_NEXT_STATE.T	<= STATE_T5H;
@@ -2373,12 +2413,17 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		case(FSM_STATE)
 
-		STATE_M1T4H: begin
-			ALU_OPCODE			<= { 2'b01, OPCODE_REG[5:3] };			// Shift/rotate opcodes 01zzz
-			ALU_OP1				<= `CUR_A;
-			ALU_INFLAGS			<= `CUR_F;
+		STATE_M1T3L: begin
+			ALU_OPCODE			<= { 2'b100, OPCODE_REG[4:3] };			// Shift/rotate opcodes 100zz
+			ALU_OP1				<=`CUR_A;
+			ALU_INFLAGS			<=`CUR_F;
+			ALU_ENABLE			<= TRUE;
 		end
-		
+
+		STATE_M1T4H: begin
+			ALU_ENABLE			<= FALSE;
+		end
+
 		STATE_M1T4L: begin
 		   `CUR_A				<= ALU_RESULT;							// Store result and flags
 		   `CUR_F[1:0]			<= ALU_OUTFLAGS[1:0];					// Set only N and C
@@ -2388,7 +2433,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		endcase		
 	end
 
-	PLA_SHR_HXY: begin													// M1(4/5) RLC/RL/RRC/RR/SLA/SRA/SLL/SRL (HL/IX+n/IY+n)
+	PLA_SHR_HXY: begin													// M1(4/5) RLC/RL/RRC/RR/SLA/SRA/SLL/SRL (HL/IX+n/IY+n) [{4,4,3},5,4,3]
 
 		case(FSM_STATE)
 
