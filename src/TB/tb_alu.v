@@ -28,7 +28,6 @@ module top (
 	end
 
 	Z80_ALU4 ZALU (
-		.CLK(			sys_clk),
 		.ENABLE(		1'b1),
 		.OPCODE(		ALU_OPCODE),
 		.OP1(			ALU_OP1),

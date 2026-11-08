@@ -544,6 +544,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_MR1T3L: begin
 		   `REG_PC				<= INC_OUT;								// PC + 1
+		   `REG_WZ				<=`CUR_HL;								// Base address to temp reg for IX/IY displacement addition
 			ALU_OP2				<= DATA_BUS;							// Pick up the displacement into ALU for later
 			BITS				<= TRUE;								// Set the BITS flag
 			FSM_NEXT_STATE		<= STATE_M1T1H;							// Go directly to another M1 for opcode
@@ -1766,8 +1767,8 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		endcase
 	end
 
-		////////////////////////////////////////////////////////////////////////////
-		// General purpose group
+	////////////////////////////////////////////////////////////////////////////
+	// General purpose group
 
 	PLA_DI: begin														// M1(4) DI
 		if (FSM_STATE == STATE_M1T4L) begin

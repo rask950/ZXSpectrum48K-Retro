@@ -43,9 +43,41 @@ PLA_SHR_HXY: begin														// M1(4/5) RLC/RL/RRC/RR/SLA/SRA/SLL/SRL (HL/IX+
 
 	case(FSM_STATE)
 
-		STATE_M1T3L: begin												// M1 (4)
-		   `REG_WZ				<= `CUR_HL;								// Base address to temp reg
+		STATE_M1T3H: begin												// MG(5) For displacement and timing purposes
+		   `REG_WZ				<=`CUR_HL;								// Base address to temp reg
+			ALU_OPCODE			<= ALU_ADC;								// Prepare to add displacement
+			ALU_OP1				<=`CUR_L;								// To temp reg
+			ALU_INFLAGS			<= 8'd0;								// Clear carry
+			ALU_ENABLE			<= TRUE;								// Add low nibble
 		end
+
+		STATE_M1T3L: begin
+			ALU_ENABLE			<= FALSE;								// Add high nibble
+			FSM_NEXT_STATE.T	<= STATE_T4H;
+		end
+
+		STATE_M1T4H: begin
+		   `REG_Z				<= ALU_RESULT;							// Low byte result to Z
+		end
+
+		STATE_M1T4L: begin
+			ALU_OP1				<=`CUR_H;								// High byte of base address
+			ALU_OP2				<= { 8 { ALU_OP2[7] }};					// This is 255 or 0 depending on the sign of OP2
+			ALU_INFLAGS			<= ALU_OUTFLAGS;						// Also need the flags for any carry
+			ALU_ENABLE			<= TRUE;								// Add low nibble
+			FSM_NEXT_STATE.T	<= STATE_T5H;
+		end
+
+		STATE_M1T5H: begin
+			ALU_ENABLE			<= FALSE;								// Add high nibble
+		end	
+
+		STATE_M1T5L: begin
+		   `REG_W				<= ALU_RESULT;							// High byte result to W - Ignore flags
+			FSM_NEXT_STATE		<= STATE_MR1T1H;
+		end
+
+
 	
 		STATE_MR1T1H: begin												// MR(4) - read value from memory
 			ADDRESS_BUS			<= `REG_WZ;
