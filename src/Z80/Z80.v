@@ -2406,8 +2406,8 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		endcase
 	end
 
-////////////////////////////////////////////////////////////////////////////
-		// Shift/Rotate and BIT/SET/RES group
+	////////////////////////////////////////////////////////////////////////////
+	// Shift/Rotate and BIT/SET/RES group
 
 	PLA_RRLC_A: begin													// M1(4) RLCA/RLA/RRCA/RRA
 
