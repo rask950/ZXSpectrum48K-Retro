@@ -43,7 +43,8 @@ parameter STATE_NIT3L	= 8'b00_01_0110;					// 16
 parameter STATE_NIT4H	= 8'b00_01_0111;					// 17
 parameter STATE_NIT4L	= 8'b00_01_1000;					// 18
 
-parameter STATE_MNT1H	= 8'b00_0z_1000;					// z8 - Match M1 and N1 cycles for parallelism
+parameter STATE_MNT1H	= 8'b00_0z_0001;					// z8 - Match M1 and N1 cycles for parallelism
+parameter STATE_MNT1L	= 8'b00_0z_0010;					// z8
 
 parameter STATE_GN1T1H	= 8'b00_10_0001;					// 21 - 10 - General Cycle 1 - 16 bit addition etc
 parameter STATE_GN1T1L	= 8'b00_10_0010;					// 22

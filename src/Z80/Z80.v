@@ -511,10 +511,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 	PLA_PF_IXIY: begin													// M1(4) IX/IY [DD/FD]
 		if (FSM_STATE == STATE_M1T4L) begin
-			if (OPCODE_REG[5]) IY <= TRUE; else IX <= TRUE;				// Set IX/IY prefix accordingly
-
-//			{ IX, IY }				<= { OPCODE_REG[5], ~OPCODE_REG[5] };
-
+		  { IX, IY }			<= { OPCODE_REG[5], ~OPCODE_REG[5] };
 			FSM_NEXT_STATE.T 	<= STATE_T1H;							// Move next to M1 WITHOUT checking for interrupts
 		end
 	end
@@ -528,7 +525,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 	PLA_PF_BTXY: begin													// M1(4) BITS with IX/IY [CB]
 		
-		case(FSM_STATE)
+		casez(FSM_STATE)
 
 		STATE_M1T4L: begin												// Begin read cycle, displacement comes immediately after CB
 			FSM_NEXT_STATE		<= STATE_MR1T1H;
@@ -538,14 +535,30 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		STATE_MR1T1H: begin												// MR(3) Prepare to read displacement
 			ADDRESS_BUS			<=`REG_PC;
 		  { INC_DIR, INC_BITS}	<= { TRUE, TRUE };						// Set incrementer to add 16 bits
+		   `REG_WZ				<=`CUR_HL;								// Base address to temp reg for IX/IY displacement addition
 		end
 
 		STATE_MR1T3L: begin
 		   `REG_PC				<= INC_OUT;								// PC + 1
-		   `REG_WZ				<=`CUR_HL;								// Base address to temp reg for IX/IY displacement addition
+
+		    ALU_OPCODE			<= ALU_ADD;
+		   	ALU_OP1				<=`REG_Z;								// Base address low byte
 			ALU_OP2				<= DATA_BUS;							// Pick up the displacement into ALU for later
+			ALU_ENABLE			<= TRUE;								// Low nibble addition
+
 			BITS				<= TRUE;								// Set the BITS flag
 			FSM_NEXT_STATE		<= STATE_M1T1H;							// Go directly to another M1 for opcode
+		end
+
+		// The rest of the addition is performed at the same time as M1 of the next instruction
+		// as the OPCODE will still be the same until T3. The high byte will be added in the instruction execution phase
+
+		STATE_MNT1H: begin
+			ALU_ENABLE			<= FALSE;								// High nibble addition
+		end
+
+		STATE_MNT1L: begin
+		   `REG_Z				<= ALU_OUT;								// Low byte of result
 		end
 
 		endcase
