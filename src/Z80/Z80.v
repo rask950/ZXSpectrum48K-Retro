@@ -511,9 +511,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 	PLA_PF_IXIY: begin													// M1(4) IX/IY [DD/FD]
 		if (FSM_STATE == STATE_M1T4L) begin
-
-			if (OPCODE_REG[5]) IY <= TRUE; else IX <= TRUE;				// Set IX/IY prefix accordingly
-
+			{ IX, IY }			<= { OPCODE_REG[5], ~OPCODE_REG[5] };	// Set either IX or IY but not both
 			FSM_NEXT_STATE.T 	<= STATE_T1H;							// Move next to M1 WITHOUT checking for interrupts
 		end
 	end
@@ -536,7 +534,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_MR1T1H: begin												// MR(3) Prepare to read displacement
 			ADDRESS_BUS			<=`REG_PC;
-			{ INC_DIR, INC_BITS}	<= { TRUE, TRUE };					// Set incrementer to add 16 bits
+		  { INC_DIR, INC_BITS}	<= { TRUE, TRUE };						// Set incrementer to add 16 bits
 		end
 
 		STATE_MR1T3L: begin
