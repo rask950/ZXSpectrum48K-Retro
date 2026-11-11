@@ -518,6 +518,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 	PLA_PF_BITS: begin													// M1(4) BITS only [CB]
 		if (FSM_STATE == STATE_M1T4L) begin
+		   `REG_WZ				<=`CUR_HL;								// Base address to temp reg for (HL) addressing mode
 			BITS				<= TRUE;								// Set the flag and get next opcode
 			FSM_NEXT_STATE.T	<= STATE_M1T1H;							// Move next to M1 WITHOUT checking for interrupts
 		end
@@ -527,38 +528,22 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		
 		casez(FSM_STATE)
 
-		STATE_M1T4L: begin												// Begin read cycle, displacement comes immediately after CB
-			FSM_NEXT_STATE		<= STATE_MR1T1H;
+		STATE_M1T4L: begin					
+		   `REG_WZ				<=`CUR_HL;								// Base address to temp reg WZ
+			BITS				<= TRUE;								// Set the BITS flag
+			FSM_NEXT_STATE		<= STATE_MR1T1H;						// Begin read cycle, displacement comes immediately after CB
 		end
 
 
 		STATE_MR1T1H: begin												// MR(3) Prepare to read displacement
 			ADDRESS_BUS			<=`REG_PC;
 		  { INC_DIR, INC_BITS}	<= { TRUE, TRUE };						// Set incrementer to add 16 bits
-		   `REG_WZ				<=`CUR_HL;								// Base address to temp reg for IX/IY displacement addition
 		end
 
 		STATE_MR1T3L: begin
 		   `REG_PC				<= INC_OUT;								// PC + 1
-
-		    ALU_OPCODE			<= ALU_ADD;
-		   	ALU_OP1				<=`REG_Z;								// Base address low byte
 			ALU_OP2				<= DATA_BUS;							// Pick up the displacement into ALU for later
-			ALU_ENABLE			<= TRUE;								// Low nibble addition
-
-			BITS				<= TRUE;								// Set the BITS flag
 			FSM_NEXT_STATE		<= STATE_M1T1H;							// Go directly to another M1 for opcode
-		end
-
-		// The rest of the addition is performed at the same time as M1 of the next instruction
-		// as the OPCODE will still be the same until T3. The high byte will be added in the instruction execution phase
-
-		STATE_MNT1H: begin
-			ALU_ENABLE			<= FALSE;								// High nibble addition
-		end
-
-		STATE_MNT1L: begin
-		   `REG_Z				<= ALU_OUT;								// Low byte of result
 		end
 
 		endcase
@@ -581,7 +566,6 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		end
 
 	end
-
 
 	////////////////////////////////////////////////////////////////////////////
 	// 8-Bit load group
@@ -2450,29 +2434,27 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		case(FSM_STATE)
 
 		STATE_M1T3L: begin
-		   `REG_W			<= `CUR_H;									// Base address high byte to temp reg
-			ALU_OPCODE		<= ALU_ADC;									// Prepare to add displacement
-			ALU_OP1			<=`CUR_L;									// To base address low byte
-			ALU_INFLAGS		<= 8'd0;									// Clear carry
-			ALU_ENABLE		<= TRUE;									// Add low nibble
+			ALU_OPCODE			<= ALU_ADC;								// Prepare to add displacement low byte
+			ALU_OP1				<=`REG_Z;
+			ALU_INFLAGS			<= 8'b0;								// No carry in to start
+			ALU_ENABLE			<= TRUE;								// Low nibble addition
 		end
-		
+
 		STATE_M1T4H: begin
-			ALU_ENABLE		<= FALSE;									// Add high nibble
+			ALU_ENABLE			<= FALSE;								// High nibble addition
 		end
 
-		STATE_M1T4L: begin
-		   `REG_Z			<= (IX|IY) 	? ALU_RESULT;					// For IX/IY pick up result of addition
-										: ALU_OP1;						// Otherwise use original low byte (L)
-
-			ALU_OP1			<=`CUR_H;
-			ALU_OP2			<= {8{ ALU_OP2[7] }};						// This is 255 or 0 depending on the sign of OP2
-			ALU_INFLAGS		<= ALU_OUTFLAGS;							// Also need the flags for any carry
-			ALU_ENABLE		<= TRUE;									// Low nibble
-			
-			FSM_NEXT_STATE.T<= (IX|IY)	? STATE_T5H						// Continue addition for (IX/IY)
-										: STATE_MR1T1H;					// Go to mem read for (HL)
-		end
+		STATE_M1T4L: begin												// M1(4/5) use extra cycle to add displacement high byte
+			if (IX|IY) begin
+				`REG_Z			<= ALU_RESULT;							// Low byte result to Z
+				ALU_OP1			<=`REG_W;
+				ALU_OP2			<= { 8 { ALU_OP2[7] }};					// This is 255 or 0 depending on the sign of OP2
+				ALU_INFLAGS		<= ALU_OUTFLAGS;						// Also need the flags for any carry
+				ALU_ENABLE		<= TRUE;								// Low nibble
+				FSM_NEXT_STATE.T<=  STATE_T5H							// Continue addition for (IX/IY)
+			end else begin
+				FSM_NEXT_STATE.T<= STATE_MR1T1H;						// Go to mem read for (HL)
+			end
 		end
 
 		STATE_M1T5H: begin
@@ -2520,15 +2502,12 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		case(FSM_STATE)
 
 		STATE_M1T3L: begin
-		   `REG_WZ				<= `CUR_HL;								// Base address to temp reg
 		end
 		
 		STATE_M1T4H: begin
-			if (IX|IY) begin
-				ALU_OPCODE		<= ALU_ADC;								// Prepare to add displacement (already in OP2)
-				ALU_OP1			<=`REG_Z;								// To temp reg
-				ALU_INFLAGS		<= 8'd0;								// Clear carry
-			end
+			ALU_OPCODE		<= ALU_ADC;								// Prepare to add displacement (already in OP2)
+			ALU_OP1			<=`REG_Z;								// To temp reg
+			ALU_INFLAGS		<= 8'd0;								// Clear carry
 		end
 
 		STATE_M1T4L: begin

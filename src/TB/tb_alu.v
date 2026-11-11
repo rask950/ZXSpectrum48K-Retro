@@ -16,19 +16,72 @@ module top (
 	reg			[ 7: 0]	ALU_INFLAGS;								// Flags in
 	reg			[ 7: 0]	ALU_RESULT;									// Result out
 	reg			[ 7: 0] ALU_OUTFLAGS;								// Individual output flags
-	
-	initial begin
-		ALU_OPCODE = ALU_DAA;
-		ALU_OP1 = 8'h04;
-		ALU_OP2 = 8'h78;
-		ALU_INFLAGS = 1'b0;
+	reg					ALU_ENABLE;	
 
-		#10 $display("operation %d + %d", ALU_OP1, 	ALU_OP2);
-		#10 $monitor("alu [%d] %h %h %h - PT %b OUT %b", ZALU.STATE, ZALU.RESULT, ZALU.PART_SHIFT, ZALU.PART_RESULT, ZALU.PART_FLAGS, ALU_OUTFLAGS );
+	reg			[ 7: 0] H;
+	reg			[ 7: 0] L;
+
+	reg			[ 7: 0]	COUNT;
+
+	reg			[ 2: 0]	FSM_STATE;
+
+	initial begin
+		FSM_STATE = 3'b000;
+		H = 8'h00;
+		L = 8'h89;	
+		COUNT = 8'h00;
+
+		#0 $monitor("[%d][%d] alu [%d] %h %h %h %h %h - PT %b OUT %h %b HL %h%h", COUNT, FSM_STATE, ZALU.ENABLE, ALU_OP1, ALU_OP2, ZALU.OP1_HALF, ZALU.OP2_HALF, ZALU.PART_RESULT, ZALU.PART_FLAGS, ALU_RESULT, ALU_OUTFLAGS, H, L );
+	end
+
+	always @(posedge sys_clk) begin
+
+		COUNT <= COUNT + 1;
+
+		case(FSM_STATE)
+
+		3'b000: begin
+			ALU_OPCODE 	<= ALU_ADC;
+			ALU_OP1 <= L;
+			ALU_OP2 <= 8'h98;
+			ALU_INFLAGS <= 1'b0;
+			ALU_ENABLE <= TRUE;
+			FSM_STATE <= 3'b001;
+		end
+
+		3'b001: begin
+			ALU_ENABLE <= FALSE;
+			FSM_STATE <= 3'b010;
+		end
+
+		3'b010: begin
+			L <= ALU_RESULT;
+			ALU_OP1 <= H;
+			ALU_OP2 <= 8'h10;
+			ALU_INFLAGS <= ALU_OUTFLAGS;
+			ALU_ENABLE <= TRUE;
+			FSM_STATE <= 3'b011;
+		end
+
+		3'b011: begin
+			ALU_ENABLE <= FALSE;
+			FSM_STATE <= 3'b100;
+		end
+
+		3'b100: begin
+			H <= ALU_RESULT;
+			FSM_STATE <= 3'b101;
+		end
+
+		3'b101: begin
+		end
+
+		endcase
+
 	end
 
 	Z80_ALU4 ZALU (
-		.ENABLE(		1'b1),
+		.ENABLE(		ALU_ENABLE),
 		.OPCODE(		ALU_OPCODE),
 		.OP1(			ALU_OP1),
 		.OP2(			ALU_OP2),
