@@ -199,7 +199,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 	STATE_M1T1H: begin										    		// T1 - Prepare to read opcode
 		ADDRESS_BUS 			<=`REG_PC;								// PC -> Address bus (and incrementer)
 		M1			    		<= ACTIVE;							   	// M1 active
-		{ INC_DIR, INC_BITS}	<= { TRUE, TRUE };						// Set incrementer to add 16 bits
+	  { INC_DIR, INC_BITS}		<= { TRUE, TRUE };						// Set incrementer to add 16 bits
 		FSM_NEXT_STATE.T		<= STATE_T1L;
 	end
 
@@ -278,12 +278,12 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 	end
 
 	STATE_NIT3H: begin													// T3 - Prepare to refresh  NO INSTRUCTION READ
-		ADDRESS_BUS				<= `REG_IR;
+		ADDRESS_BUS				<=`REG_IR;
 		M1			 			<= INACTIVE;
 		RD			 			<= INACTIVE;
 		MREQ					<= INACTIVE;
 		RFSH					<= ACTIVE;
-		{ INC_DIR, INC_BITS }	<= { TRUE, FALSE };						// Set incrementer to add 7 bits
+	  { INC_DIR, INC_BITS }		<= { TRUE, FALSE };						// Set incrementer to add 7 bits
 		FSM_NEXT_STATE			<= STATE_M1T3L;							// Remainder follows the usual M1
 	end
 
@@ -511,7 +511,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 	PLA_PF_IXIY: begin													// M1(4) IX/IY [DD/FD]
 		if (FSM_STATE == STATE_M1T4L) begin
-		  { IX, IY }			<= { OPCODE_REG[5], ~OPCODE_REG[5] };
+		  { IX, IY }			<= { ~OPCODE_REG[5], OPCODE_REG[5] };
 			FSM_NEXT_STATE.T 	<= STATE_T1H;							// Move next to M1 WITHOUT checking for interrupts
 		end
 	end
@@ -537,7 +537,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_MR1T1H: begin												// MR(3) Prepare to read displacement
 			ADDRESS_BUS			<=`REG_PC;
-		  { INC_DIR, INC_BITS}	<= { TRUE, TRUE };						// Set incrementer to add 16 bits
+		  { INC_DIR, INC_BITS }	<= { TRUE, TRUE };						// Set incrementer to add 16 bits
 		end
 
 		STATE_MR1T3L: begin
@@ -1015,8 +1015,8 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		endcase
 	end
 
-		////////////////////////////////////////////////////////////////////////////
-		// 16-Bit load group
+	////////////////////////////////////////////////////////////////////////////
+	// 16-Bit load group
 
 	PLA_LDRR_NN: begin													// M1(4) LD rr,nn [BC/DE/HL/IX/IY/SP]
 
@@ -1029,8 +1029,8 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 
 		STATE_MR1T1H: begin												// MR(3)
-			ADDRESS_BUS				<=`REG_PC;							// PC to address bus
-			{ INC_DIR, INC_BITS}	<= { TRUE, TRUE };					// Set incrementer to add 16 bits
+			ADDRESS_BUS			<=`REG_PC;								// PC to address bus
+		  { INC_DIR, INC_BITS}	<= { TRUE, TRUE };						// Set incrementer to add 16 bits
 		end
 
 		STATE_MR1T3H: begin												// MR(3) Read low byte
@@ -1049,8 +1049,8 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		end
 
 		STATE_MR2T3H: begin												// Update PC and write to reg
-		   `REG_PC				 <= INC_OUT;
-		   	REG.R16[REG16_INDEX] <= { DATA_BUS, `REG_Z };				// Byte read is high, temp is low
+		   `REG_PC				<= INC_OUT;
+		   	REG.R16[REG16_INDEX]<= { DATA_BUS, `REG_Z };				// Byte read is high, temp is low
 		end
 
 		STATE_MR2T3L: begin												// Instruction complete
@@ -2451,7 +2451,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 				ALU_OP2			<= { 8 { ALU_OP2[7] }};					// This is 255 or 0 depending on the sign of OP2
 				ALU_INFLAGS		<= ALU_OUTFLAGS;						// Also need the flags for any carry
 				ALU_ENABLE		<= TRUE;								// Low nibble
-				FSM_NEXT_STATE.T<=  STATE_T5H							// Continue addition for (IX/IY)
+				FSM_NEXT_STATE.T<=  STATE_T5H;							// Continue addition for (IX/IY)
 			end else begin
 				FSM_NEXT_STATE.T<= STATE_MR1T1H;						// Go to mem read for (HL)
 			end

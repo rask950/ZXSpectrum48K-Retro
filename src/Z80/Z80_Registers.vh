@@ -62,6 +62,7 @@
     `define CUR_B REG.R8[ EXX ? 8 : 0 ]
 
 	`define CUR_HL REG.R16[IY ? 9  : IX ? 8  : EXX ? 6  : 2]
+	
 	`define CUR_H  REG.R8[ IY ? 18 : IX ? 16 : EXX ? 12 : 4]
 	`define CUR_L  REG.R8[ IY ? 19 : IX ? 17 : EXX ? 13 : 5]
 

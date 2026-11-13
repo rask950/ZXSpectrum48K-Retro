@@ -13,18 +13,27 @@ initial begin
 
 	cnt = 0;
 
-	z80.REG.R16[2] = 0;
-	z80.REG.R16[3] = 16'hAA00;
+	z80.REG.R16[8] = 16'b0;
+	z80.REG.R16[12] = 16'hAA00;
 
-	mem[ 0] = 62;
-	mem[ 1] = 71;
-	mem[ 2] = 14;
-	mem[ 3] = 6;
-	mem[ 4] = 198;
-	mem[ 5] = 92;
-	mem[ 6] = 118;
+	mem[ 0] = 221;
+	mem[ 1] = 33;
+	mem[ 2] = 6;
+	mem[ 3] = 0;
+	mem[ 4] = 221;
+	mem[ 5] = 203;
+	mem[ 6] = 4;
+	mem[ 7] = 22;
+	mem[ 8] = 118;
+	mem[ 9] = 118;
+	mem[10] = 118;
+	mem[11] = 118;
+	mem[12] = 118;
+	mem[13] = 118;
+	mem[14] = 118;
+	mem[15] = 118;
 
-	#1 $monitor("[%h] %h PC %h M1%b MQ%b RD%b RF%b DB%h OP%h BC %h AF %h - ALU [%b] OP1 %h OP2 %h R %h", cnt, z80.FSM_STATE, z80.REG.R16[12], CPU_M1, CPU_MREQ, CPU_RD, CPU_RFSH, CPU_DATA_BUS, z80.OPCODE_REG, z80.REG.R16[0], z80.REG.R16[3], z80.ZALU.ENABLE, z80.ZALU.OP1, z80.ZALU.OP2, z80.ZALU.RESULT );
+	#0 $monitor("[%h] %h PC %h IX%b IY%b RD%b RF%b DB%h OP%h IX %h WZ %h - ALU [%b] OP1 %h OP2 %h R %h", cnt, z80.FSM_STATE, z80.REG.R16[12], z80.IX, z80.IY, CPU_RD, CPU_RFSH, CPU_DATA_BUS, z80.OPCODE_REG, z80.REG.R16[8], z80.REG.R16[12], z80.ZALU.ENABLE, z80.ZALU.OP1, z80.ZALU.OP2, z80.ZALU.RESULT );
 
 end
 
