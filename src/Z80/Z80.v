@@ -2488,7 +2488,12 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 			ALU_OP1				<= DATA_BUS;							// Byte is read from DATA_BUS to ALU
 			ALU_OPCODE			<= { 2'b10, OPCODE_REG[5:3] };
 			ALU_INFLAGS			<= `CUR_F;
+			ALU_ENABLE			<= TRUE;
 			FSM_NEXT_STATE.T	<= STATE_T4H;							// Extra cycle for timing
+		end
+
+		STATE_MR1T4H: begin
+			ALU_ENABLE			<= FALSE;
 		end
 
 		STATE_MR1T4L: begin
