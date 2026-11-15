@@ -28,7 +28,7 @@ reg					OP_CARRY;
 
 reg			[ 3: 0]	RESULT_LOWER;							// Store lower nibble result
 
-wire		[ 3: 0]	PART_SHIFT;								// Partial result for shift operations
+wire		[ 3: 0]	PART_SHIFT;								// Result for shift operations
 wire		[ 3: 0]	PART_RESULT;							// Partial result from the ALU operations
 wire		[ 1: 0]	PART_FLAGS;								// Partial flags C, V from ALU operations
 
@@ -52,7 +52,8 @@ always @(ENABLE) begin
 				N				= FALSE;
 			end
 			FALSE: begin
-				RESULT_LOWER	= PART_SHIFT;
+				RESULT_LOWER = PART_SHIFT;
+				H				= PART_FLAGS[1];
 			end
 		endcase
 	end
@@ -69,7 +70,8 @@ always @(ENABLE) begin
 				N				= FALSE;
 			end
 			FALSE: begin
-				RESULT_LOWER	= PART_SHIFT;
+				RESULT_LOWER = PART_SHIFT;
+				H				= PART_FLAGS[1];
 			end
 		endcase
 	end
@@ -97,7 +99,7 @@ always @(ENABLE) begin
 				N				= FALSE;
 			end
 			FALSE: begin
-				RESULT_LOWER	= PART_SHIFT;
+				RESULT_LOWER = PART_SHIFT;
 			end
 		endcase
 	end
@@ -157,14 +159,15 @@ FLAGSETTER flag_instance (
 FLG8 flg_instance (
 	.OP1(			OP1),
 	.ENABLE(		OPCODE == ALU_FLG),
-	.PART_RESULT( { PART_RESULT, PART_SHIFT } )
+	.RESULT(	  { PART_RESULT, PART_SHIFT }),
+	.PART_FLAGS(	PART_FLAGS)
 );
 
 SHL8 shl_instance (
 	.OP1(			OP1),
 	.CARRY(			OP_CARRY),
 	.ENABLE(		OPCODE[4] && ~OPCODE[0]),
-	.PART_RESULT( { PART_RESULT, PART_SHIFT } ),
+	.RESULT(	  { PART_RESULT, PART_SHIFT }),
 	.PART_FLAGS(	PART_FLAGS)
 );
 
@@ -172,7 +175,7 @@ SHR8 shr_instance (
 	.OP1(			OP1),
 	.CARRY(			OP_CARRY),
 	.ENABLE(		OPCODE[4] &&  OPCODE[0]),
-	.PART_RESULT( { PART_RESULT, PART_SHIFT } ),
+	.RESULT(	  { PART_RESULT, PART_SHIFT }),
 	.PART_FLAGS(	PART_FLAGS)
 );
 
@@ -288,11 +291,13 @@ endmodule
 module FLG8(
 	input		[ 7: 0]	OP1,
 	input				ENABLE,
-	output 		[ 7: 0]	PART_RESULT
+	output 		[ 7: 0]	RESULT,
+	output 		[ 1: 0]	PART_FLAGS
 );
 
-assign PART_RESULT = ENABLE ?  OP1 : 8'bz;
-
+assign RESULT		= ENABLE ?  OP1		 : 8'bz;
+assign PART_FLAGS	= ENABLE ?  OP1[3:2] : 2'bz;
+	
 endmodule
 
 ////////////////////////////////////////////////////////////////
@@ -302,12 +307,12 @@ module SHL8(
 	input		[ 7: 0]	OP1,
 	input				CARRY,
 	input				ENABLE,
-	output 		[ 7: 0]	PART_RESULT,
+	output 		[ 7: 0]	RESULT,
 	output 		[ 1: 0]	PART_FLAGS
 );
 
-assign PART_RESULT = ENABLE ?  { OP1[6:0], CARRY }	: 8'bz;
-assign PART_FLAGS  = ENABLE ?  { OP1[7], 1'b0 } 	: 2'bz;
+assign RESULT		= ENABLE ?	{ OP1[6:0], CARRY }	: 8'bz;
+assign PART_FLAGS	= ENABLE ?  { OP1[7], OP1[4]  }	: 2'bz;
 
 endmodule
 
@@ -318,12 +323,12 @@ module SHR8(
 	input		[ 7: 0]	OP1,
 	input				CARRY,
 	input				ENABLE,
-	output 		[ 7: 0]	PART_RESULT,
+	output 		[ 7: 0]	RESULT,
 	output 		[ 1: 0]	PART_FLAGS
 );
 
-assign PART_RESULT = ENABLE ?  { CARRY, OP1[7:1] }	: 8'bz;
-assign PART_FLAGS  = ENABLE ?  { OP1[0], 1'b0 } 	: 2'bz;
+assign RESULT		= ENABLE ?  { CARRY, OP1[7:1] }	: 8'bz;
+assign PART_FLAGS	= ENABLE ?  { OP1[0], OP1[3] } 	: 2'bz;
 
 endmodule
 
