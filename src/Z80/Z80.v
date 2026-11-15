@@ -2492,13 +2492,11 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 			FSM_NEXT_STATE.T	<= STATE_T4H;							// Extra cycle for timing
 		end
 
-		STATE_MR1T4H: begin
+		STATE_MR1T4H:
 			ALU_ENABLE			<= FALSE;
-		end
 
-		STATE_MR1T4L: begin
+		STATE_MR1T4L:
 			FSM_NEXT_STATE		<= STATE_MW1T1H;						// Begin write back
-		end
 
 
 

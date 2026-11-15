@@ -40,7 +40,7 @@ always @(ENABLE) begin
 
 	casez(OPCODE)
 
-	ALU_SHR: begin
+	ALZ_SHR: begin
 		case(ENABLE)
 			TRUE: begin
 				case(OPCODE)
@@ -52,13 +52,13 @@ always @(ENABLE) begin
 				N				= FALSE;
 			end
 			FALSE: begin
-				RESULT_LOWER = PART_SHIFT;
+				RESULT_LOWER	= PART_SHIFT;
 				H				= PART_FLAGS[1];
 			end
 		endcase
 	end
 
-	ALU_SHL: begin
+	ALZ_SHL: begin
 		case(ENABLE)
 			TRUE: begin
 				case(OPCODE)
@@ -70,7 +70,7 @@ always @(ENABLE) begin
 				N				= FALSE;
 			end
 			FALSE: begin
-				RESULT_LOWER = PART_SHIFT;
+				RESULT_LOWER	= PART_SHIFT;
 				H				= PART_FLAGS[1];
 			end
 		endcase
