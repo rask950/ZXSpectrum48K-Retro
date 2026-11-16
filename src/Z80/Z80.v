@@ -540,13 +540,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_MR1T3L: begin
 		   `REG_PC				<= INC_OUT;								// PC + 1
-
-			ALU_OPCODE			<= ALU_ADC;								// Perform the first part of displacement addition
-			ALU_OP1				<=`CUR_L;								// Low byte of base address
 			ALU_OP2				<= DATA_BUS;							// Pick up the displacement into ALU for later
-			ALU_INFLAGS			<= 8'b0;								// Clear flags
-			ALU_ENABLE			<= TRUE;								// Enable ALU for addition
-
 			BITS				<= TRUE;								// Set the BITS flag HERE
 			FSM_NEXT_STATE		<= STATE_M1T1H;							// Go directly to another M1 for opcode
 		end
@@ -2415,7 +2409,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		case(FSM_STATE)
 
 		STATE_M1T3L: begin
-			ALU_OPCODE			<= { 2'b10, OPCODE_REG[4:3] };			// Shift/rotate opcodes 100zz
+			ALU_OPCODE			<= { ALU_3SR, OPCODE_REG[4:3] };		// Shift/rotate opcodes 100zz
 			ALU_OP1				<=`CUR_A;
 			ALU_INFLAGS			<=`CUR_F;
 			ALU_ENABLE			<= TRUE;
@@ -2441,15 +2435,18 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 			case(FSM_STATE)
 
 			STATE_M1T3L: begin
-				ALU_ENABLE			<= FALSE;								// High nibble addition
+				ALU_OPCODE		<= ALU_ADC;								// Perform the first part of displacement addition
+				ALU_OP1			<=`CUR_L;								// Low byte of base address
+				ALU_INFLAGS		<= 8'b0;								// Clear flags
+				ALU_ENABLE		<= TRUE;								// Enable ALU for addition
 			end
 
 			STATE_M1T4H: begin
-			   `REG_Z			<= ALU_RESULT;							// Low byte result to Z
+				ALU_ENABLE		<= FALSE;								// High nibble addition
 			end
 
-			STATE_M1T4L: begin												// M1(4/5) use extra cycle to add displacement high byte
-				
+			STATE_M1T4L: begin											// M1(4/5) use extra cycle to add displacement high byte
+			   `REG_Z			<= ALU_RESULT;							// Low byte result to Z		
 				ALU_OP1			<=`CUR_H;
 				ALU_OP2			<= { 8 { ALU_OP2[7] }};					// This is 255 or 0 depending on the sign of OP2
 				ALU_INFLAGS		<= ALU_OUTFLAGS;						// Also need the flags for any carry
@@ -2458,13 +2455,13 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 				FSM_NEXT_STATE	<= STATE_M1T5H;							// Continue addition for high byte
 			end
 
-			STATE_M1T5H: begin												// Extra cycle to finish adding displacement
-				ALU_ENABLE			<= FALSE;								// Add high nibble
+			STATE_M1T5H: begin											// Extra cycle to finish adding displacement
+				ALU_ENABLE		<= FALSE;								// Add high nibble
 			end
 
 			STATE_M1T5L: begin
-				`REG_W				<= ALU_RESULT;							// High byte result to W - Ignore flags
-				FSM_NEXT_STATE		<= STATE_MR1T1H;
+			   `REG_W			<= ALU_RESULT;							// High byte result to W - Ignore flags
+				FSM_NEXT_STATE	<= STATE_MR1T1H;
 			end
 	
 			endcase

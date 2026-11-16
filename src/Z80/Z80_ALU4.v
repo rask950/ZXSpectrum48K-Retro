@@ -40,10 +40,10 @@ always @(ENABLE) begin
 
 	casez(OPCODE)
 
-	ALZ_SHR: begin
+	ALZ_SHR: begin													// OPCODES RRC, RR, SRA, SRL 17, 18, 21, 23
 		case(ENABLE)
 			TRUE: begin
-				case(OPCODE)
+          		case(OPCODE)
 					ALU_RRC:	OP_CARRY	= OP1[0];
 					ALU_RR:		OP_CARRY	= INFLAGS[0];
 					ALU_SRA:	OP_CARRY	= OP1[7];
@@ -58,7 +58,7 @@ always @(ENABLE) begin
 		endcase
 	end
 
-	ALZ_SHL: begin
+	ALZ_SHL: begin													// OPCODES RLC, RL, SLA, SLL 16, 18, 20, 22
 		case(ENABLE)
 			TRUE: begin
 				case(OPCODE)
@@ -76,7 +76,7 @@ always @(ENABLE) begin
 		endcase
 	end
 
-	ALU_DAA: begin
+	ALU_DAA: begin													// OPCODES DAA - 8
 		case(ENABLE)
 			TRUE: begin
 				OP1_HALF		= OP1[3:0];
@@ -93,7 +93,7 @@ always @(ENABLE) begin
 		endcase
 	end
 
-	ALU_FLG: begin
+	ALU_FLG: begin													// OPCODES FLG - 11
 		case(ENABLE)
 			TRUE: begin
 				N				= FALSE;

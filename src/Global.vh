@@ -46,8 +46,11 @@ localparam ALU_SRA	= 5'b10101;
 localparam ALU_SLL	= 5'b10110;
 localparam ALU_SRL	= 5'b10111;
 
-localparam ALZ_SHR	= 5'b1zzz1;             // Match shift/rotate right
-localparam ALZ_SHL	= 5'b1zzz0;             // Match shift/rotate left
+localparam ALU_2SR	= 2'b10;					// 2 bit prefix for shift/rotate
+localparam ALU_3SR	= 3'b100;					// 3 bit prefix for shift/rotate
+
+localparam ALZ_SHR	= 5'b1zzz1;					// Match shift/rotate right
+localparam ALZ_SHL	= 5'b1zzz0;					// Match shift/rotate left
 
 //`define _GLOBAL 1
 //`endif
