@@ -512,7 +512,8 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 	PLA_PF_IXIY: begin													// M1(4) IX/IY [DD/FD]
 		if (FSM_STATE == STATE_M1T4L) begin
-		  { IX, IY }			<= { ~OPCODE_REG[5], OPCODE_REG[5] };
+			IX					<= ~OPCODE_REG[5];						// Set IX or IY based on opcode bit
+			IY					<=  OPCODE_REG[5];
 			FSM_NEXT_STATE.T 	<= STATE_T1H;							// Move next to M1 WITHOUT checking for interrupts
 		end
 	end
@@ -569,12 +570,12 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 	////////////////////////////////////////////////////////////////////////////
 	// 8-Bit load group
 	
-	PLA_LDR_HXY: begin													// M1(4) LD r,(HL/IX+n/IY+n)
+	PLA_LDR_HXY: begin													// M1(4) LD r,(HL/IX+n/IY+n) [(4),4,3,5,3]
 
 		case(FSM_STATE)
 
 		STATE_M1T4L: begin
-		   `REG_WZ				<= `CUR_HL;								// Base address to WZ ####### CHECK TIMING
+		   `REG_WZ				<= `CUR_HL;								// M1(4) Base address to WZ ####### CHECK TIMING
 			FSM_NEXT_STATE		<= (IX|IY)  ? STATE_MR1T1H 
 											: STATE_MR2T1H;
 		end
@@ -592,6 +593,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 			FSM_NEXT_STATE		<= STATE_GN1T1H;						// Now start a general cycle for calculation
 		end
 
+		// General cycle for displacement addition
 
 		STATE_GN1T1H: begin												// MG(5) For displacement and timing purposes
 			ALU_OPCODE			<= ALU_ADC;								// Prepare to add displacement
@@ -607,34 +609,35 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_GN1T2H: begin
 		   `REG_Z				<= ALU_RESULT;							// Low byte result to Z
-		end
-
-		STATE_GN1T2L: begin
 			ALU_OP1				<=`REG_W;								// High byte of base address
 			ALU_OP2				<= { 8 { ALU_OP2[7] }};					// This is 255 or 0 depending on the sign of OP2
 			ALU_INFLAGS			<= ALU_OUTFLAGS;						// Also need the flags for any carry
 			ALU_ENABLE			<= TRUE;								// Add low nibble
-			FSM_NEXT_STATE.T	<= STATE_T3H;
 		end
 
-		STATE_GN1T3H: begin
+		STATE_GN1T2L: begin
 			ALU_ENABLE			<= FALSE;								// Add high nibble
+			FSM_NEXT_STATE.T	<= STATE_T3H;
 		end	
 
-		STATE_GN1T3L: begin
+		STATE_GN1T3H: begin
 		   `REG_W				<= ALU_RESULT;							// High byte result to W - Ignore flags
-			FSM_NEXT_STATE.T	<= STATE_T4H;
 		end
+
+		STATE_GN1T3L:													// Timing (5 cycles)
+			FSM_NEXT_STATE.T	<= STATE_T4H;
+
 		STATE_GN1T4L:
 			FSM_NEXT_STATE.T	<= STATE_T5H;
 
 		STATE_GN1T5L:
 			FSM_NEXT_STATE		<= STATE_MR2T1H;						// Move on to memory read
 
+		// Second read cycle for data read
 
 		STATE_MR2T1H: begin												// MR(3) Read byte
 			ADDRESS_BUS			<=`REG_WZ;								// Read address to bus
-			{ IX, IY }			<= { FALSE, FALSE };					// Cancel IX and IY prefix so H and L are correct
+		  { IX, IY }			<= { FALSE, FALSE };					// Cancel IX and IY prefix so H and L are correct e. LD L,(IX+10)
 			CPU_REG_NUM			<= OPCODE_REG[5:3];						// Decode the destination reg
 		end
 
