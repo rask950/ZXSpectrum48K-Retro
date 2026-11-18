@@ -28,7 +28,7 @@ module top (
 	initial begin
 		FSM_STATE = 3'b000;
 		H = 8'h98;
-		L = 8'h89;	
+		L = 8'h76;	
 		COUNT = 8'h00;
 
 		#0 $monitor("[%d][%d] alu [%d] OP1 %h OP2 %h PR %h PS %h - PF %b OUT %h R %h HL%h%h", COUNT, FSM_STATE, ZALU.ENABLE, ALU_OP1, ALU_OP2, ZALU.PART_RESULT, ZALU.PART_SHIFT, ZALU.PART_FLAGS, ALU_OUTFLAGS, ALU_RESULT, H, L);
@@ -50,7 +50,7 @@ module top (
 
 		3'b001: begin
 			ALU_ENABLE <= FALSE;
-			FSM_STATE <= 3'b010;
+			FSM_STATE <= 3'b101;
 		end
 
 		3'b010: begin

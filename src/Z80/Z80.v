@@ -676,6 +676,8 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		end
 
 
+		// General cycle for displacement addition
+
 		STATE_GN1T1H: begin												// MG(5) For displacement and timing purposes
 			ALU_OPCODE			<= ALU_ADC;								// Prepare to add displacement
 			ALU_OP1				<=`REG_Z;								// To temp reg
@@ -690,22 +692,22 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_GN1T2H: begin
 		   `REG_Z				<= ALU_RESULT;							// Low byte result to Z
-		end
-
-		STATE_GN1T2L: begin
 			ALU_OP1				<=`REG_W;								// High byte of base address
 			ALU_OP2				<= { 8 { ALU_OP2[7] }};					// This is 255 or 0 depending on the sign of OP2
 			ALU_INFLAGS			<= ALU_OUTFLAGS;						// Also need the flags for any carry
 			ALU_ENABLE			<= TRUE;								// Add low nibble
+		end
+
+		STATE_GN1T2L: begin
+			ALU_ENABLE			<= FALSE;								// Add high nibble
 			FSM_NEXT_STATE.T	<= STATE_T3H;
 		end
 
 		STATE_GN1T3H: begin
-			ALU_ENABLE			<= FALSE;								// Add high nibble
+		   `REG_W				<= ALU_RESULT;							// High byte result to W - Ignore flags
 		end	
 
 		STATE_GN1T3L: begin
-		   `REG_W				<= ALU_RESULT;							// High byte result to W - Ignore flags
 			FSM_NEXT_STATE.T	<= STATE_T4H;
 		end
 		
@@ -718,7 +720,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_MW1T1H: begin												// MW(3) Write byte
 			ADDRESS_BUS			<=`REG_WZ;								// Address to bus
-			{ IX, IY }			<= { FALSE, FALSE };					// Cancel IX and IY prefix so H and L are correct
+		  { IX, IY }			<= { FALSE, FALSE };					// Cancel IX and IY prefix so H and L are correct
 			CPU_REG_NUM			<= OPCODE_REG[2:0];						// Decode the source reg
 		end
 
@@ -764,6 +766,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 											: STATE_MR3T1H;				// MR3 just reads the immediate value
 		end
 
+		// IX/IY - read displacement and add to base address in WZ
 
 		STATE_MR1T1H: begin												// MR(3) - Read displacement
 			ADDRESS_BUS			<=`REG_PC;
@@ -772,7 +775,6 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_MR1T3L: begin												// Add displacement
 		   `REG_PC				<= INC_OUT;
-
 			ALU_OP2				<= DATA_BUS;							// Displacement to ALU
 			FSM_NEXT_STATE		<= STATE_MR2T1H;						// Now an extra long read for immediate value
 		end
@@ -781,7 +783,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_MR2T1H: begin												// MR(5) - Read immediate value/add displacement
 			ADDRESS_BUS			<=`REG_PC;								// PC to address bus
-
+			
 			ALU_OPCODE			<= ALU_ADC;								// Prepare to add displacement
 			ALU_OP1				<=`REG_Z;								// To temp reg
 			ALU_INFLAGS			<= 8'd0;								// Clear carry
@@ -794,17 +796,18 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_MR2T2H: begin
 		   `REG_Z				<= ALU_RESULT;							// Low byte result to Z if IX/IY
-		end
-
-		STATE_MR2T2L: begin												// Continue add displacement
 			ALU_OP1				<=`REG_W;								// High byte of base address
 			ALU_OP2				<= { 8 { ALU_OP2[7] }};					// This is 255 or 0 depending on the sign of OP2
 			ALU_INFLAGS			<= ALU_OUTFLAGS;						// Also need the flags for any carry
 			ALU_ENABLE			<= TRUE;								// Add low nibble
 		end
 
-		STATE_MR2T3H: begin
+		STATE_MR2T2L: begin												// Continue add displacement
 			ALU_ENABLE			<= FALSE;								// Add high nibble
+		end
+
+		STATE_MR2T3H: begin
+		   `REG_W				<= ALU_RESULT;							// High byte result to W
 		end
 
 		STATE_MR2T3L: begin												// Data read, proceed to write
@@ -813,15 +816,12 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 			FSM_NEXT_STATE.T	<= STATE_T4H;							// Extend to 5 cycles
 		end
 
-		STATE_MR2T4H: begin
-		   `REG_W				<= ALU_RESULT;							// High byte result to W if IX/IY
-		end
-
 		STATE_MR2T4L:
 			FSM_NEXT_STATE.T	<= STATE_T5H;							// Timing to 5 cycles
 
 		STATE_MR2T5L:
 			FSM_NEXT_STATE		<= STATE_MW1T1H;						// Begin write cycle
+
 
 
 		STATE_MR3T1H: begin												// MR(3) Read immediate value for HL
@@ -834,6 +834,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 			DATA_OUT			<= DATA_BUS;							// Data IN goes to OUT
 			FSM_NEXT_STATE		<= STATE_MW1T1H;						// Proceed to write immediate byte
 		end
+
 
 
 		STATE_MW1T1H: begin												// MW(3) - Write immediate byte to memory
@@ -1095,11 +1096,8 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		end
 
 		STATE_MR2T3L: begin												// Now read/write depending on opcode
-
 			ADDRESS_BUS			<=`REG_WZ;								// Temp reg holds the address
-
 			CPU_REG_NUM			<= { 1'b0, OPCODE_REG[5:4] };			// Start decode - 16 bit reg set 0 (BC/DE/HL/SP)
-
 			FSM_NEXT_STATE		<= OPCODE_REG[3] ? STATE_MR3T1H
 											 	 : STATE_MW1T1H;
 		end
@@ -1179,7 +1177,6 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 				ADDRESS_BUS		<=`REG_SP;								// Stack pointer to address bus & incrementer
 				INC_BITS		<= TRUE;								// 16 bit
 				CPU_REG_NUM		<= { 1'b1, OPCODE_REG[5:4] };			// Reg 16 bit set 1 (BC/DE/HL/IX/IY/AF)
-
 				FSM_NEXT_STATE	<= OPCODE_REG[2] ? STATE_M1T5H
 											 	 : STATE_MR1T1H;
 			end
@@ -1536,24 +1533,23 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_GN1T2H: begin
 		   `REG_Z				<= ALU_RESULT;							// Low byte result to Z
-		end
-
-		STATE_GN1T2L: begin
 			ALU_OP1				<=`REG_W;								// High byte of base address
 			ALU_OP2				<= { 8 { ALU_OP2[7] }};					// This is 255 or 0 depending on the sign of OP2
 			ALU_INFLAGS			<= ALU_OUTFLAGS;						// Also need the flags for any carry
 			ALU_ENABLE			<= TRUE;								// Add low nibble
+		end
+
+		STATE_GN1T2L: begin
+			ALU_ENABLE			<= FALSE;								// Add high nibble
 			FSM_NEXT_STATE.T	<= STATE_T3H;
 		end
 
 		STATE_GN1T3H: begin
-			ALU_ENABLE			<= FALSE;								// Add high nibble
+		   `REG_W				<= ALU_RESULT;							// High byte result to W - Ignore flags
 		end	
 
-		STATE_GN1T3L: begin
-		   `REG_W				<= ALU_RESULT;							// High byte result to W - Ignore flags
+		STATE_GN1T3L:
 			FSM_NEXT_STATE.T	<= STATE_T4H;
-		end
 
 		STATE_GN1T4L:													// Unused cycles for timing purposes
 			FSM_NEXT_STATE.T	<= STATE_T5H;
@@ -1685,24 +1681,23 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_GN1T2H: begin
 		   `REG_Z				<= ALU_RESULT;							// Low byte result to Z
-		end
-
-		STATE_GN1T2L: begin
 			ALU_OP1				<=`REG_W;								// High byte of base address
 			ALU_OP2				<= { 8 { ALU_OP2[7] }};					// This is 255 or 0 depending on the sign of OP2
 			ALU_INFLAGS			<= ALU_OUTFLAGS;						// Also need the flags for any carry
 			ALU_ENABLE			<= TRUE;								// Add low nibble
+		end
+
+		STATE_GN1T2L: begin
+			ALU_ENABLE			<= FALSE;								// Add high nibble
 			FSM_NEXT_STATE.T	<= STATE_T3H;
 		end
 
 		STATE_GN1T3H: begin
-			ALU_ENABLE			<= FALSE;								// Add high nibble
+		   `REG_W				<= ALU_RESULT;							// High byte result to W - Ignore flags
 		end	
 
-		STATE_GN1T3L: begin
-		   `REG_W				<= ALU_RESULT;							// High byte result to W - Ignore flags
+		STATE_GN1T3L:
 			FSM_NEXT_STATE.T	<= STATE_T4H;
-		end
 
 		STATE_GN1T4L: 
 			FSM_NEXT_STATE.T	<= STATE_T5H;
@@ -1717,18 +1712,22 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_MR2T3H: begin								 				// Initialize ALU
 			ALU_OPCODE			<= OPCODE_REG[0] ? ALU_SUB
-													 : ALU_ADD;
+												 : ALU_ADD;
 			ALU_OP1				<= DATA_BUS;
-			ALU_INFLAGS			<=`CUR_F;
 			ALU_OP2				<= 8'h01;								// Value to add/sub
+			ALU_INFLAGS			<=`CUR_F;
+			ALU_ENABLE			<= TRUE;								// Enable ALU for operation
 		end
 
 		STATE_MR2T3L: begin												// Now write back the result
-			DATA_OUT			<= ALU_RESULT;
-		   `CUR_F[7:1]			<= ALU_OUTFLAGS[7:1];					// Set flags except C
+			ALU_ENABLE			<= FALSE;								// Disable ALU after operation
 			FSM_NEXT_STATE		<= STATE_MW1T1H;
 		end
 
+		STATE_MW1T1H: begin												// MW(3) Write back result
+			DATA_OUT			<= ALU_RESULT;
+		   `CUR_F[7:1]			<= ALU_OUTFLAGS[7:1];					// Set flags except C
+		end
 
 		STATE_MW1T3L: begin												// MW(3) Write back result
 			FSM_LAST_M			<= TRUE;
@@ -1754,6 +1753,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_M1T4L: begin
 			ALU_ENABLE			<= FALSE;								// High nibble
+			FSM_LAST_M			<= TRUE;
 		end
 
 		STATE_MNT1H: begin												// Now write back the result
@@ -2076,7 +2076,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_M1T4L: begin
 			ALU_OPCODE			<= ALU_SUB;
-			ALU_OP1				<= `CUR_B;								// Value of B reg
+			ALU_OP1				<=`CUR_B;								// Value of B reg
 			ALU_OP2				<= 1;
 			ALU_ENABLE			<= TRUE;								// Low nibble
 			FSM_NEXT_STATE.T	<= STATE_T5H;							// We need to pick up the 1 byte displacement
@@ -2125,26 +2125,20 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_GN1T2H: begin
 		   `REG_PCL				<= ALU_RESULT;							// Low byte result
-		end
-
-		STATE_GN1T2L: begin
-			FSM_NEXT_STATE.T	<= STATE_T3H;
-		end
-
-		STATE_GN1T3H: begin												// Add displacement high byte to PC
 			ALU_OP1				<=`REG_PCH;
 			ALU_OP2				<= { 8 { ALU_OP2[7] }};					// This is 255 or 0 depending on the sign of OP2
 			ALU_INFLAGS			<= ALU_OUTFLAGS;						// Also need the flags for any carry
 			ALU_ENABLE			<= TRUE;								// Low nibble
 		end
 
-		STATE_GN1T3L: begin
+		STATE_GN1T2L: begin
 			ALU_ENABLE			<= FALSE;								// High nibble
-			FSM_NEXT_STATE.T	<= STATE_T4H;							// Timing
+			FSM_NEXT_STATE.T	<= STATE_T3H;
 		end
 
-		STATE_GN1T4H: begin
+		STATE_GN1T3L: begin
 		   `REG_PCH				<= ALU_RESULT;							// High byte result to PC - Ignore flags
+			FSM_NEXT_STATE.T	<= STATE_T4H;							// Timing
 		end
 
 		STATE_GN1T4L:
