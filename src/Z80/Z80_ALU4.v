@@ -36,7 +36,7 @@ assign RESULT = { PART_RESULT, RESULT_LOWER };
 
 assign OUTFLAGS	= { S, Z, FALSE, H, FALSE, OPCODE inside { ALU_ADD, ALU_ADC, ALU_SUB, ALU_SBC, ALU_CP } ? V : P, N, C };
 
-always @(ENABLE) begin
+always @(*) begin
 
 	casez(OPCODE)
 
@@ -44,18 +44,20 @@ always @(ENABLE) begin
 		case(ENABLE)
 			TRUE: begin
           		case(OPCODE)
-					ALU_RRC:	OP_CARRY	= OP1[0];
+					default:	OP_CARRY	= OP1[0];               // Default 0 (RRC) prevent inferred latches
 					ALU_RR:		OP_CARRY	= INFLAGS[0];
 					ALU_SRA:	OP_CARRY	= OP1[7];
 					ALU_SRL:	OP_CARRY	= 1'b1;					
 				endcase
-				N				= FALSE;
+                RESULT_LOWER	= 4'b0;
 			end
 			FALSE: begin
-				RESULT_LOWER	= PART_SHIFT;
+                RESULT_LOWER	= PART_SHIFT;
 				H				= PART_FLAGS[1];
+                OP_CARRY        = FALSE;
 			end
 		endcase
+		N				= FALSE;
 	end
 
 	ALZ_SHL: begin													// OPCODES RLC, RL, SLA, SLL 16, 18, 20, 22
@@ -64,16 +66,18 @@ always @(ENABLE) begin
 				case(OPCODE)
 					ALU_RLC:	OP_CARRY	= OP1[7];
 					ALU_RL:		OP_CARRY	= INFLAGS[0];
-					ALU_SLA:	OP_CARRY	= 1'b0;
-					ALU_SLL:	OP_CARRY	= 1'b1;					
+					ALU_SLL:	OP_CARRY	= 1'b1;
+					default:	OP_CARRY	= 1'b0;                 // Inferred latches
 				endcase
-				N				= FALSE;
+                RESULT_LOWER	= 4'b0;
 			end
 			FALSE: begin
 				RESULT_LOWER	= PART_SHIFT;
 				H				= PART_FLAGS[1];
+                OP_CARRY        = FALSE;
 			end
 		endcase
+		N				= FALSE;
 	end
 
 	ALU_DAA: begin													// OPCODES DAA - 8
@@ -81,8 +85,8 @@ always @(ENABLE) begin
 			TRUE: begin
 				OP1_HALF		= OP1[3:0];
 				OP_CARRY		= INFLAGS[FLAG_H];
-				N				= FALSE;
-			end
+	            RESULT_LOWER	= 4'b0;
+            end
 			FALSE: begin
 				RESULT_LOWER	= PART_RESULT;
 				H				= PART_FLAGS[1];
@@ -91,27 +95,31 @@ always @(ENABLE) begin
 				OP_CARRY		= INFLAGS[FLAG_C];
 			end
 		endcase
+        N				= FALSE;
 	end
 
 	ALU_FLG: begin													// OPCODES FLG - 11
-		case(ENABLE)
+        OP_CARRY                = FALSE;
+        case(ENABLE)
 			TRUE: begin
-				N				= FALSE;
+                RESULT_LOWER	= 4'b0;
 			end
 			FALSE: begin
 				RESULT_LOWER = PART_SHIFT;
 			end
 		endcase
+		N				= FALSE;
 	end
 
 	ALU_AND,
 	ALU_OR,
 	ALU_XOR:begin													// OPCODES AND, OR, XOR - 4, 5, 6
+        OP_CARRY                = FALSE;
 		case(ENABLE)
 			TRUE: begin
 				OP1_HALF		= OP1[3:0];
 				OP2_HALF		= OP2[3:0];
-				N				= FALSE;
+                RESULT_LOWER	= 4'b0;
 			end
 			FALSE: begin
 				RESULT_LOWER	= PART_RESULT;
@@ -121,15 +129,16 @@ always @(ENABLE) begin
 				OP2_HALF		= OP2[7:4];
 			end
 		endcase
+		N				= FALSE;
 	end
 
 	default: begin													// OPCODES ADD, ADC, SUB, SBC, CP - 0, 1, 2, 3, 7
 		case(ENABLE)
 			TRUE: begin
+                RESULT_LOWER	= 4'b0;
 				OP1_HALF		= OP1[3:0];
 				OP2_HALF		= OP2[3:0];
 				OP_CARRY		= OPCODE inside { ALU_SBC, ALU_ADC } ? INFLAGS[FLAG_C] : 1'b0;
-				N				= OPCODE inside { ALU_SUB, ALU_SBC } ? TRUE : FALSE;
 			end
 			FALSE: begin
 				RESULT_LOWER	= PART_RESULT;
@@ -140,6 +149,7 @@ always @(ENABLE) begin
 				OP_CARRY		= PART_FLAGS[1];
 			end
 		endcase
+		N				= OPCODE inside { ALU_SUB, ALU_SBC } ? TRUE : FALSE;
 	end
 
 	endcase

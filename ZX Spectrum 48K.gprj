@@ -17,7 +17,7 @@
         <File path="src/ULA/ZX Spectrum PAL.v" type="file.verilog" enable="1"/>
         <File path="src/ULA/ZX Spectrum ULA.v" type="file.verilog" enable="1"/>
         <File path="src/Z80/Z80.v" type="file.verilog" enable="1"/>
-        <File path="src/Z80/Z80_ALU.v" type="file.verilog" enable="1"/>
+        <File path="src/Z80/Z80_ALU4.v" type="file.verilog" enable="1"/>
         <File path="src/Z80/Z80_CC.v" type="file.verilog" enable="1"/>
         <File path="src/Z80/Z80_Incrementer.v" type="file.verilog" enable="1"/>
         <File path="src/Z80/Z80_Registers.v" type="file.verilog" enable="1"/>
