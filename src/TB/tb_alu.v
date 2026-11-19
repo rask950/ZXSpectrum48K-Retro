@@ -31,7 +31,7 @@ module top (
 		L = 8'h76;	
 		COUNT = 8'h00;
 
-		#0 $monitor("[%d][%d] alu [%d] OP1 %h OP2 %h PR %h PS %h - PF %b OUT %h R %h HL%h%h", COUNT, FSM_STATE, ZALU.ENABLE, ALU_OP1, ALU_OP2, ZALU.PART_RESULT, ZALU.PART_SHIFT, ZALU.PART_FLAGS, ALU_OUTFLAGS, ALU_RESULT, H, L);
+		#0 $monitor("[%d][%d] ALU [%d][%h] OP1 %h OP2 %h - PR %h PS %h PF %b - OF %h R %h", COUNT, FSM_STATE, ZALU.ENABLE, ALU_OPCODE, ALU_OP1, ALU_OP2, ZALU.PART_RESULT, ZALU.PART_SHIFT, ZALU.PART_FLAGS, ALU_OUTFLAGS, ALU_RESULT);
 	end
 
 	always @(posedge sys_clk) begin
@@ -41,8 +41,9 @@ module top (
 		case(FSM_STATE)
 
 		3'b000: begin
-			ALU_OPCODE 	<= ALU_SLA;
-			ALU_OP1 <= L;
+			ALU_OPCODE 	<= ALU_XOR;
+			ALU_OP1 <= 8'hAA;
+			ALU_OP2 <= 8'hAB;
 			ALU_INFLAGS <= 1'b0;
 			ALU_ENABLE <= TRUE;
 			FSM_STATE <= 3'b001;

@@ -41,6 +41,8 @@ always @(*) begin
 	casez(OPCODE)
 
 	ALZ_SHR: begin													// OPCODES RRC, RR, SRA, SRL 17, 18, 21, 23
+		OP1_HALF			 = 4'b0;
+		OP2_HALF			 = 4'b0;
 		case(ENABLE)
 			TRUE: begin
           		case(OPCODE)
@@ -62,6 +64,8 @@ always @(*) begin
 	end
 
 	ALZ_SHL: begin													// OPCODES RLC, RL, SLA, SLL 16, 18, 20, 22
+		OP1_HALF			 = 4'b0;
+		OP2_HALF			 = 4'b0;
 		case(ENABLE)
 			TRUE: begin
 				case(OPCODE)
@@ -86,6 +90,7 @@ always @(*) begin
 		case(ENABLE)
 			TRUE: begin
 				OP1_HALF		= OP1[3:0];
+				OP2_HALF			 = 4'b0;
 				OP_CARRY		= INFLAGS[FLAG_H];
 	            RESULT_LOWER	= 4'b0;
                 H               = 1'b0;
@@ -95,6 +100,7 @@ always @(*) begin
 				H				= PART_FLAGS[1];
 
 				OP1_HALF		= OP1[7:4];
+				OP2_HALF			 = 4'b0;
 				OP_CARRY		= INFLAGS[FLAG_C];
 			end
 		endcase
@@ -102,10 +108,12 @@ always @(*) begin
 	end
 
 	ALU_FLG: begin													// OPCODES FLG - 11
-        OP_CARRY                = FALSE;
+ 		OP1_HALF			 = 4'b0;
+		OP2_HALF			 = 4'b0;
+       	OP_CARRY             = FALSE;
         case(ENABLE)
 			TRUE: begin
-                RESULT_LOWER	= 4'b0;
+                RESULT_LOWER = 4'b0;
 			end
 			FALSE: begin
 				RESULT_LOWER = PART_SHIFT;
@@ -118,12 +126,11 @@ always @(*) begin
 	ALU_AND,
 	ALU_OR,
 	ALU_XOR:begin													// OPCODES AND, OR, XOR - 4, 5, 6
-        OP_CARRY                = FALSE;
 		case(ENABLE)
 			TRUE: begin
+                RESULT_LOWER	= 4'b0;
 				OP1_HALF		= OP1[3:0];
 				OP2_HALF		= OP2[3:0];
-                RESULT_LOWER	= 4'b0;
                 H               = 1'b0;
 			end
 			FALSE: begin
@@ -134,7 +141,8 @@ always @(*) begin
 				OP2_HALF		= OP2[7:4];
 			end
 		endcase
-		N				= FALSE;
+        OP_CARRY                = FALSE;
+		N						= FALSE;
 	end
 
 	default: begin													// OPCODES ADD, ADC, SUB, SBC, CP - 0, 1, 2, 3, 7

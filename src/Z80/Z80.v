@@ -149,7 +149,9 @@ initial begin
 	IORQ						= INACTIVE;
 	RFSH						= INACTIVE;
 
-	`REG_IR						= 16'h3F00;
+	`REG_IR						= 16'd0;
+	`REG_AF						= 16'd0;
+	`REG_AF_					= 16'd0;
 	`REG_PC						= 16'd0;					 			// Start execution here
 end
 
