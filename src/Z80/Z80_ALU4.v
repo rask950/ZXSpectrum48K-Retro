@@ -50,6 +50,7 @@ always @(*) begin
 					ALU_SRL:	OP_CARRY	= 1'b1;					
 				endcase
                 RESULT_LOWER	= 4'b0;
+                H               = 1'b0;
 			end
 			FALSE: begin
                 RESULT_LOWER	= PART_SHIFT;
@@ -70,6 +71,7 @@ always @(*) begin
 					default:	OP_CARRY	= 1'b0;                 // Inferred latches
 				endcase
                 RESULT_LOWER	= 4'b0;
+                H               = 1'b0;
 			end
 			FALSE: begin
 				RESULT_LOWER	= PART_SHIFT;
@@ -86,7 +88,8 @@ always @(*) begin
 				OP1_HALF		= OP1[3:0];
 				OP_CARRY		= INFLAGS[FLAG_H];
 	            RESULT_LOWER	= 4'b0;
-            end
+                H               = 1'b0;
+          end
 			FALSE: begin
 				RESULT_LOWER	= PART_RESULT;
 				H				= PART_FLAGS[1];
@@ -109,6 +112,7 @@ always @(*) begin
 			end
 		endcase
 		N				= FALSE;
+        H               = 1'b0;
 	end
 
 	ALU_AND,
@@ -120,6 +124,7 @@ always @(*) begin
 				OP1_HALF		= OP1[3:0];
 				OP2_HALF		= OP2[3:0];
                 RESULT_LOWER	= 4'b0;
+                H               = 1'b0;
 			end
 			FALSE: begin
 				RESULT_LOWER	= PART_RESULT;
@@ -136,6 +141,8 @@ always @(*) begin
 		case(ENABLE)
 			TRUE: begin
                 RESULT_LOWER	= 4'b0;
+                H               = 1'b0;
+
 				OP1_HALF		= OP1[3:0];
 				OP2_HALF		= OP2[3:0];
 				OP_CARRY		= OPCODE inside { ALU_SBC, ALU_ADC } ? INFLAGS[FLAG_C] : 1'b0;
