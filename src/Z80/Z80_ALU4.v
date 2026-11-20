@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
 module Z80_ALU4 (
-	
+	input					CLK,
 	input	reg				ENABLE,
 	input	reg		[ 4: 0]	OPCODE,							// This is the ALU opcode (NOT the CPU opcode)
 	input	reg		[ 7: 0]	OP1,
@@ -36,7 +36,7 @@ assign RESULT = { PART_RESULT, RESULT_LOWER };
 
 assign OUTFLAGS	= { S, Z, FALSE, H, FALSE, OPCODE inside { ALU_ADD, ALU_ADC, ALU_SUB, ALU_SBC, ALU_CP } ? V : P, N, C };
 
-always @(*) begin
+always @(negedge CLK) begin
 
 	casez(OPCODE)
 

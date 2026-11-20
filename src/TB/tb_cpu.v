@@ -32,7 +32,7 @@ initial begin
 
 //	#0 $monitor("[%h] %h AD %h PC %h IX%b IY%b RD%b BT%b DB%h OP%h IX %h WZ %h - ALU [%b] OP1 %h OP2 %h R %h M %h", cnt, z80.FSM_STATE, CPU_ADDRESS_BUS, z80.REG.R16[12], z80.IX, z80.IY, CPU_RD, z80.BITS, CPU_DATA_BUS, z80.OPCODE_REG, z80.REG.R16[8], z80.REG.R16[13], z80.ZALU.ENABLE, z80.ZALU.OP1, z80.ZALU.OP2, z80.ZALU.RESULT, mem[10] );
 
-	#0 $monitor("[%h][%h] PC %h IFF %b%b OP %h AF %h BC %h DE %h HL %h", cnt, z80.FSM_STATE, z80.REG.R16[12], z80.IFF1, z80.IFF2, z80.OPCODE_REG, z80.REG.R16[3], z80.REG.R16[0], z80.REG.R16[1], z80.REG.R16[2] );
+	#0 $monitor("[%h][%h] PC %h IFF %b%b OP %h AF %h BC %h DE %h HL %h ALU [%b] OP1 %h OP2 %h R %h F %h", cnt, z80.FSM_STATE, z80.REG.R16[12], z80.IFF1, z80.IFF2, z80.OPCODE_REG, z80.REG.R16[3], z80.REG.R16[0], z80.REG.R16[1], z80.REG.R16[2], z80.ZALU.ENABLE, z80.ZALU.OP1, z80.ZALU.OP2, z80.ZALU.RESULT, z80.ZALU.OUTFLAGS );
 
 end
 

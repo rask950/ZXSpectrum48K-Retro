@@ -78,6 +78,7 @@ REG_DECODE ZREG(
 	reg							ALU_ENABLE;								// ALU enable signal
 
 Z80_ALU4 ZALU (
+	.CLK(						CLK),
 	.OPCODE(					ALU_OPCODE),
 	.OP1(						ALU_OP1),
 	.OP2(						ALU_OP2),
@@ -126,8 +127,8 @@ initial begin
 	ALU_ENABLE					= FALSE;
 
 	INT_MODE					= 0;									// Interrupt mode 0-2
-	IFF1						= FALSE;								// Interrupt enabled FF 1
-	IFF2						= FALSE;								// and 2
+	IFF1						= TRUE;									// Interrupt enabled FF 1
+	IFF2						= TRUE;									// and 2
 	EXA							= FALSE;								// AF/AF'
 	EXX							= FALSE;								// BC,DE,HL/BC',DE',HL'
 
@@ -149,9 +150,9 @@ initial begin
 	IORQ						= INACTIVE;
 	RFSH						= INACTIVE;
 
-	`REG_IR						= 16'd0;
-	`REG_AF						= 16'd0;
-	`REG_AF_					= 16'd0;
+	`REG_IR						= 16'hFFFF;
+	`REG_AF						= 16'hFFFF;
+	`REG_AF_					= 16'hFFFF;
 	`REG_PC						= 16'd0;					 			// Start execution here
 end
 
