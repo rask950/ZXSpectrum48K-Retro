@@ -150,9 +150,9 @@ initial begin
 	IORQ						= INACTIVE;
 	RFSH						= INACTIVE;
 
-	`REG_IR						= 16'hFFFF;
-	`REG_AF						= 16'hFFFF;
-	`REG_AF_					= 16'hFFFF;
+	`REG_IR						= 16'd0;
+	`REG_AF						= 16'd0;
+	`REG_AF_					= 16'd0;
 	`REG_PC						= 16'd0;					 			// Start execution here
 end
 
@@ -210,7 +210,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 	STATE_M1T1L: begin													// One half-cycle later ...
 	   `REG_PC					<= INC_OUT;								// Update PC
 		MREQ					<= ACTIVE;
-		RD						<= ACTIVE;								//	MREQ and RD go active
+		RD						<= ACTIVE;								// MREQ and RD go active
 		FSM_NEXT_STATE.T		<= STATE_T2H;
 	end
 
@@ -224,8 +224,8 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 	end
 
 	STATE_M1T3H: begin													// T3 - Prepare to refresh & Instruction decode
-        OPCODE_REG				<= DATA_BUS;							// This is here for instructions that neet to start at T3H
- 		ADDRESS_BUS				<=`REG_IR;								// The OPCODE can be used from here onwards
+        OPCODE_REG				<= DATA_BUS;
+ 		ADDRESS_BUS				<=`REG_IR;
 		M1			 			<= INACTIVE;
 		RD			 			<= INACTIVE;
 		MREQ					<= INACTIVE;
@@ -234,7 +234,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		FSM_NEXT_STATE.T		<= STATE_T3L;
 	end
 
-	STATE_M1T3L: begin
+	STATE_M1T3L: begin													// The OPCODE can be used from here onwards
 		MREQ					<= ACTIVE;								// MREQ active for refresh
 	   `REG_IR					<= INC_OUT;								// Update IR reg
 		FSM_NEXT_STATE.T		<= STATE_T4H;

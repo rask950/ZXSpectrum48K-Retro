@@ -37,8 +37,9 @@ module ZX_Spectrum_ULA(
 	input						CPU_WR,
 	inout				[ 7: 0] CPU_DATA_BUS,
 	input				[15: 0] CPU_ADDRESS_BUS,
-	output							CPU_INT,
-	output						CPU_WAIT,
+
+	output						CPU_INT,								// 50HZ interrupt to CPU
+	output						CPU_WAIT,								// CPU wait signal to emulate slow RAM
 
 	output				[ 7: 0] PAGING									// Paging register
 
@@ -61,7 +62,7 @@ assign		PAGING 				= IO_PORT_MEM;							// Connect the memory paging register to
 
 initial begin
 
-	IO_PORT_ULA					= 8'd0;									// Page in SD Rom and 48K ROM at 
+	IO_PORT_ULA					= 8'd4;									// Page in SD Rom and 48K ROM at 
 	IO_PORT_MEM					= 8'b01010000;							// Default page-in SD card mem
 
 end
