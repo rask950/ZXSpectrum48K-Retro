@@ -1495,8 +1495,8 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		endcase
 	end
 
-		////////////////////////////////////////////////////////////////////////////
-		// 8-Bit arithmetic group
+	////////////////////////////////////////////////////////////////////////////
+	// 8-Bit arithmetic group
 
 	PLA_ARI_HXY: begin													// M1(4) ADD/ADC/SUB/SBC/AND/XOR/OR/CP (HL/IX+n/IY+n)
 		
@@ -1623,10 +1623,13 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 	PLA_ARI_R: begin													// M1(4) ADD/ADC/SUB/SBC/AND/XOR/OR/CP r
 
-		case(FSM_STATE)
+		casez(FSM_STATE)
 
 		STATE_M1T3L: begin
 			CPU_REG_NUM			<= 			OPCODE_REG[2:0];
+		end
+
+		STATE_M1T4H: begin
 			ALU_OPCODE 			<= { 2'b0,	OPCODE_REG[5:3] };			// Initialize ALU
 			ALU_OP1				<=`CUR_A;
 			ALU_INFLAGS			<=`CUR_F;
@@ -1634,14 +1637,14 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 			ALU_ENABLE			<= TRUE;
 		end
 
-		STATE_M1T4H: begin
+		STATE_M1T4L: begin												// Store result and flags back in AF
 			ALU_ENABLE			<= FALSE;
+			FSM_LAST_M			<= TRUE;								// Instruction complete
 		end
 
-		STATE_M1T4L: begin												// Store result and flags back in AF
+		STATE_MNT1H: begin
 		   `CUR_A				<= ALU_RESULT;
 		   `CUR_F				<= ALU_OUTFLAGS;
-			FSM_LAST_M			<= TRUE;								// Instruction complete
 		end
 
 		endcase
