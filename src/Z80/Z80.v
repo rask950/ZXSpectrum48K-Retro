@@ -2049,7 +2049,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_MR1T1H: begin												// MR(3) Read immediate low byte
 			ADDRESS_BUS			<=`REG_PC;
-		  { INC_DIR, INC_BITS }	<= { TRUE, TRUE};					// Set incrementer add
+		  { INC_DIR, INC_BITS }	<= { TRUE, TRUE};						// Set incrementer add
 		end
 
 		STATE_MR1T3H: begin
@@ -2065,11 +2065,11 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_MR2T3H: begin												// MR(3) Temp reg now holds address
 			`REG_W				<= DATA_BUS;
-			`REG_PC				<= INC_OUT;								// Update PC
 		end
 
-		STATE_MR2T3L: begin												// Take the jump : continue
-			if (OPCODE_REG[0] | CC_RESULT) `REG_PC <= `REG_WZ;
+		STATE_MR2T3L: begin
+		   `REG_PC 				<= (OPCODE_REG[0] | CC_RESULT)	?`REG_WZ		// Take the jump
+		   														: INC_OUT;		// Don't take the jump
 			FSM_LAST_M			<= TRUE;
 		end
 
