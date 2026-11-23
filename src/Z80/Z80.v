@@ -22,12 +22,17 @@ module ZX_Spectrum_Z80 (
 
 `include "..\\Global.vh"
 
-`include "Z80_Parameters.vh"
+`include "Z80_FSM.vh"
 
-`include "Z80_Registers.vh"
+`include "Z80_REG.vh"
+
+`include "Z80_ALU.vh"
+
+`include "Z80_PLA.vh"
 
 	FSM_REG 					FSM_STATE;								// CPU state
 	FSM_REG						FSM_NEXT_STATE;							// CPU state next clock
+
 	reg	    					FSM_LAST_M;								// Indicates last M cycle of instruction
 
 	reg					[ 7: 0]	OPCODE_REG;								// Opcode read from memory
@@ -45,7 +50,7 @@ module ZX_Spectrum_Z80 (
 
 	reg					[ 7: 0]	DATA_OUT;								// Data bus output reg
 
-	assign DATA_BUS = ~WR ? DATA_OUT : 8'bz;							// Tri-state data bus control based on WR signal
+	assign DATA_BUS =	   WR ? 8'bz : DATA_OUT;						// Tri-state data bus control based on WR signal
 
 initial begin
 

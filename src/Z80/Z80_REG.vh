@@ -2,16 +2,6 @@
 
 `ifndef _REGS
 
-    typedef union packed {
-        reg [ 0:27][ 7: 0]R8;
-        reg [ 0:13][15: 0]R16;
-    } REGS;
-
-	typedef struct packed {
-		reg [ 3: 0]M;
-		reg [ 3: 0]T;
-	} FSM_REG;
-
     `define REG_B   REG.R8[ 0]
     `define REG_C   REG.R8[ 1]
     `define REG_D   REG.R8[ 2]

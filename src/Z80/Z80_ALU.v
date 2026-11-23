@@ -12,6 +12,8 @@ module Z80_ALU (
 
 `include "..\\Global.vh"
 
+`include "Z80_ALU.vh"
+
 	wire			[ 7: 0]	PART_RESULT;							// Partial result from the ALU operations
 	wire			[ 3: 0]	PART_FLAGS;								// Partial flags (C, P/V, N, H) from ALU operations
 
