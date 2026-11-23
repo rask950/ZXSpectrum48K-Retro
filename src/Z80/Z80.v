@@ -1513,7 +1513,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		end
 
 		STATE_MR2T3H: begin								 				// Initialize ALU
-			ALU_OPCODE 			<= { 2'b0, OPCODE_REG[5:3] };
+			ALU_OPCODE 			<= { ALU_ARI, OPCODE_REG[5:3] };
 			ALU_OP1				<=`CUR_A;
 			ALU_INFLAGS			<=`CUR_F;
 			ALU_OP2				<= DATA_BUS;
@@ -1544,7 +1544,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_MR1T3H: begin												// Update PC and initialize ALU
 		   `REG_PC				<= INC_OUT;
-			ALU_OPCODE  		<= { 2'b0, OPCODE_REG[5:3] };
+			ALU_OPCODE  		<= { ALU_ARI, OPCODE_REG[5:3] };
 			ALU_OP1				<=`CUR_A;
 			ALU_INFLAGS			<=`CUR_F;
 			ALU_OP2				<= DATA_BUS;
@@ -1568,7 +1568,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		end
 
         STATE_M1T4H: begin
-			ALU_OPCODE 			<= { 2'b0, OPCODE_REG[5:3] };			// Initialize ALU
+			ALU_OPCODE 			<= { ALU_ARI, OPCODE_REG[5:3] };		// Initialize ALU
 			ALU_OP1				<=`CUR_A;
 			ALU_INFLAGS			<=`CUR_F;
 			ALU_OP2				<= REG.R8[REG8_INDEX];
@@ -1642,7 +1642,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_MR2T3H: begin								 				// Initialize ALU
 			ALU_OPCODE			<= OPCODE_REG[0] ? ALU_SUB
-													 : ALU_ADD;
+												 : ALU_ADD;
 			ALU_OP1				<= DATA_BUS;
 			ALU_INFLAGS			<=`CUR_F;
 			ALU_OP2				<= 8'h01;								// Value to add/sub
@@ -1672,7 +1672,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		
 		STATE_M1T4H: begin												// Read the base address
 			ALU_OPCODE			<= OPCODE_REG[0] ? ALU_SUB
-													 : ALU_ADD;
+												 : ALU_ADD;
 			ALU_OP1				<= REG.R8[REG8_INDEX];
 			ALU_INFLAGS			<=`CUR_F;
 			ALU_OP2				<= 8'h01;								// Value to add/sub
@@ -1868,7 +1868,8 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		end
 
 		STATE_GN1T3L: begin
-			ALU_OPCODE			<= OPCODE_REG[3] ? ALU_ADC : ALU_SBC;
+			ALU_OPCODE			<= OPCODE_REG[3] ? ALU_ADC
+												 : ALU_SBC;
 			ALU_OP1				<= `CUR_L;
 			ALU_OP2				<= `REG_Z;
 			ALU_INFLAGS			<= `CUR_F;
@@ -2297,7 +2298,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		case(FSM_STATE)
 
 		STATE_M1T4H: begin
-			ALU_OPCODE			<= { 2'b01, OPCODE_REG[5:3] };			// Shift/rotate opcodes 01zzz
+			ALU_OPCODE			<= { ALU_SHR, OPCODE_REG[5:3] };		// Shift/rotate opcodes 10zzz
 			ALU_OP1				<= `CUR_A;
 			ALU_INFLAGS			<= `CUR_F;
 		end
@@ -2355,7 +2356,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_MR1T3L: begin
 			ALU_OP1				<= DATA_BUS;							// Byte read into DATA_BUS
-			ALU_OPCODE			<= { 2'b01, OPCODE_REG[5:3] };
+			ALU_OPCODE			<= { ALU_SHR, OPCODE_REG[5:3] };
 			ALU_INFLAGS			<= `CUR_F;
 			FSM_NEXT_STATE.T	<= STATE_T4H;							// Extra cycle for timing
 		end
@@ -2511,7 +2512,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		end
 
 		STATE_M1T4H: begin
-			ALU_OPCODE			<= { 2'b01, OPCODE_REG[5:3] };			// Shift/rotate opcodes 01zzz
+			ALU_OPCODE			<= { ALU_SHR, OPCODE_REG[5:3] };		// Shift/rotate opcodes 01zzz
 			ALU_OP1				<= REG.R8[REG8_INDEX];
 			ALU_INFLAGS			<= `CUR_F;
 		end
