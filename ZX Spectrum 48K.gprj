@@ -20,7 +20,7 @@
         <File path="src/Z80/Z80_ALU.v" type="file.verilog" enable="1"/>
         <File path="src/Z80/Z80_CC.v" type="file.verilog" enable="1"/>
         <File path="src/Z80/Z80_Incrementer.v" type="file.verilog" enable="1"/>
-        <File path="src/Z80/Z80_Registers.v" type="file.verilog" enable="1"/>
+        <File path="src/Z80/Z80_REG.v" type="file.verilog" enable="1"/>
         <File path="src/ZX Spectrum.v" type="file.verilog" enable="1"/>
         <File path="src/ZX Spectrum 48K.cst" type="file.cst" enable="1"/>
         <File path="src/ZX Spectrum 48K.sdc" type="file.sdc" enable="1"/>

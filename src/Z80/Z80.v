@@ -2873,7 +2873,7 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 
 		STATE_M1T4L: begin												// Pseudo M1 Cycle complete. Begin stacking PC
 			ADDRESS_BUS			<=`REG_SP;
-			{ INC_DIR, INC_BITS }	<= { FALSE, TRUE};					// Set incrementer sub 16 bits
+		  { INC_DIR, INC_BITS }	<= { FALSE, TRUE};						// Set incrementer sub 16 bits
 			FSM_NEXT_STATE		<= STATE_MW1T1H;
 		end
 
