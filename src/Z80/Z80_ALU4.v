@@ -1,0 +1,502 @@
+`timescale 1ns / 1ps
+
+module Z80_ALU4 (
+	input					CLK,
+	input	reg				ENABLE,
+	input	reg		[ 4: 0]	OPCODE,							// This is the ALU opcode (NOT the CPU opcode)
+	input	reg		[ 7: 0]	OP1,
+	input	reg		[ 7: 0]	OP2,
+	input	reg		[ 7: 0]	INFLAGS,
+	output	reg		[ 7: 0]	RESULT,
+	output	reg		[ 7: 0]	OUTFLAGS
+);
+
+`include "..\\Global.vh"
+
+`include "Z80_ALU.vh"
+
+reg					S;										// Individual output flags
+reg					Z;
+reg					H;
+reg					P;
+reg					V;
+reg					N;
+reg					C;
+
+reg			[ 3: 0]	OP1_HALF;								// Inputs to primitives
+reg			[ 3: 0]	OP2_HALF;
+reg					OP_CARRY;
+
+
+reg			[ 3: 0]	RESULT_LOWER;							// Store lower nibble result
+
+wire		[ 3: 0]	PART_SHIFT;								// Result for shift operations
+wire		[ 3: 0]	PART_RESULT;							// Partial result from the ALU operations
+wire		[ 1: 0]	PART_FLAGS;								// Partial flags C, V from ALU operations
+
+assign RESULT = { PART_RESULT, RESULT_LOWER };
+
+assign OUTFLAGS	= { S, Z, FALSE, H, FALSE, OPCODE inside { ALU_ADD, ALU_ADC, ALU_SUB, ALU_SBC, ALU_CP } ? V : P, N, C };
+
+always @(negedge CLK) begin
+
+	casez(OPCODE)
+
+	ALZ_SHR: begin													// OPCODES RRC, RR, SRA, SRL 17, 18, 21, 23
+		OP1_HALF			 = 4'b0;
+		OP2_HALF			 = 4'b0;
+		case(ENABLE)
+			TRUE: begin
+          		case(OPCODE)
+					default:	OP_CARRY	= OP1[0];               // Default 0 (RRC) prevent inferred latches
+					ALU_RR:		OP_CARRY	= INFLAGS[0];
+					ALU_SRA:	OP_CARRY	= OP1[7];
+					ALU_SRL:	OP_CARRY	= 1'b1;					
+				endcase
+                RESULT_LOWER	= 4'b0;
+                H               = 1'b0;
+			end
+			FALSE: begin
+                RESULT_LOWER	= PART_SHIFT;
+				H				= PART_FLAGS[1];
+                OP_CARRY        = FALSE;
+			end
+		endcase
+		N				= FALSE;
+	end
+
+	ALZ_SHL: begin													// OPCODES RLC, RL, SLA, SLL 16, 18, 20, 22
+		OP1_HALF			 = 4'b0;
+		OP2_HALF			 = 4'b0;
+		case(ENABLE)
+			TRUE: begin
+				case(OPCODE)
+					ALU_RLC:	OP_CARRY	= OP1[7];
+					ALU_RL:		OP_CARRY	= INFLAGS[0];
+					ALU_SLL:	OP_CARRY	= 1'b1;
+					default:	OP_CARRY	= 1'b0;                 // Inferred latches
+				endcase
+                RESULT_LOWER	= 4'b0;
+                H               = 1'b0;
+			end
+			FALSE: begin
+				RESULT_LOWER	= PART_SHIFT;
+				H				= PART_FLAGS[1];
+                OP_CARRY        = FALSE;
+			end
+		endcase
+		N				= FALSE;
+	end
+
+	ALU_DAA: begin													// OPCODES DAA - 8
+		case(ENABLE)
+			TRUE: begin
+				OP1_HALF		= OP1[3:0];
+				OP2_HALF			 = 4'b0;
+				OP_CARRY		= INFLAGS[FLAG_H];
+	            RESULT_LOWER	= 4'b0;
+                H               = 1'b0;
+          end
+			FALSE: begin
+				RESULT_LOWER	= PART_RESULT;
+				H				= PART_FLAGS[1];
+
+				OP1_HALF		= OP1[7:4];
+				OP2_HALF			 = 4'b0;
+				OP_CARRY		= INFLAGS[FLAG_C];
+			end
+		endcase
+        N				= FALSE;
+	end
+
+	ALU_FLG: begin													// OPCODES FLG - 11
+ 		OP1_HALF			 = 4'b0;
+		OP2_HALF			 = 4'b0;
+       	OP_CARRY             = FALSE;
+        case(ENABLE)
+			TRUE: begin
+                RESULT_LOWER = 4'b0;
+			end
+			FALSE: begin
+				RESULT_LOWER = PART_SHIFT;
+			end
+		endcase
+		N				= FALSE;
+        H               = 1'b0;
+	end
+
+	ALU_AND,
+	ALU_OR,
+	ALU_XOR:begin													// OPCODES AND, OR, XOR - 4, 5, 6
+		case(ENABLE)
+			TRUE: begin
+                RESULT_LOWER	= 4'b0;
+				OP1_HALF		= OP1[3:0];
+				OP2_HALF		= OP2[3:0];
+                H               = 1'b0;
+			end
+			FALSE: begin
+				RESULT_LOWER	= PART_RESULT;
+				H				= FALSE;
+
+				OP1_HALF		= OP1[7:4];
+				OP2_HALF		= OP2[7:4];
+			end
+		endcase
+        OP_CARRY                = FALSE;
+		N						= FALSE;
+	end
+
+	default: begin													// OPCODES ADD, ADC, SUB, SBC, CP - 0, 1, 2, 3, 7
+		case(ENABLE)
+			TRUE: begin
+                RESULT_LOWER	= 4'b0;
+                H               = 1'b0;
+
+				OP1_HALF		= OP1[3:0];
+				OP2_HALF		= OP2[3:0];
+				OP_CARRY		= OPCODE inside { ALU_SBC, ALU_ADC } ? INFLAGS[FLAG_C] : 1'b0;
+			end
+			FALSE: begin
+				RESULT_LOWER	= PART_RESULT;
+				H				= PART_FLAGS[1];
+
+				OP1_HALF		= OP1[7:4];
+				OP2_HALF		= OP2[7:4];
+				OP_CARRY		= PART_FLAGS[1];
+			end
+		endcase
+		N				= OPCODE inside { ALU_SUB, ALU_SBC } ? TRUE : FALSE;
+	end
+
+	endcase
+	
+end
+
+FLAGSETTER flag_instance (
+	.PART_RESULT( { PART_RESULT, RESULT_LOWER } ),
+	.PART_FLAGS(	PART_FLAGS),
+	.Z(				Z),
+	.S(				S),
+	.P(				P),
+	.V(				V),
+	.C(				C)
+);
+
+FLG48 flg_instance (
+	.OP1(			OP1),
+	.ENABLE(		OPCODE == ALU_FLG),
+	.RESULT(	  { PART_RESULT, PART_SHIFT }),
+	.PART_FLAGS(	PART_FLAGS)
+);
+
+SHL48 shl_instance (
+	.OP1(			OP1),
+	.CARRY(			OP_CARRY),
+	.ENABLE(		OPCODE[4] && ~OPCODE[0]),
+	.RESULT(	  { PART_RESULT, PART_SHIFT }),
+	.PART_FLAGS(	PART_FLAGS)
+);
+
+SHR48 shr_instance (
+	.OP1(			OP1),
+	.CARRY(			OP_CARRY),
+	.ENABLE(		OPCODE[4] &&  OPCODE[0]),
+	.RESULT(	  { PART_RESULT, PART_SHIFT }),
+	.PART_FLAGS(	PART_FLAGS)
+);
+
+DAA4 daa_instance (
+	.OP1(			OP1_HALF),
+	.CARRY(			OP_CARRY),
+	.ENABLE(		OPCODE == ALU_DAA),
+	.PART_RESULT(	PART_RESULT),
+	.PART_FLAGS(	PART_FLAGS)
+);
+
+ADD4 add_instance (
+	.OP1(			OP1_HALF),
+	.OP2(			OP2_HALF),
+	.CARRY(			OP_CARRY),
+	.ENABLE(		OPCODE == ALU_ADD || OPCODE == ALU_ADC),
+	.PART_RESULT(	PART_RESULT),
+	.PART_FLAGS(	PART_FLAGS)
+);
+
+SUB4 sub_instance (
+	.OP1(			OP1_HALF),
+	.OP2(			OP2_HALF),
+	.CARRY(			OP_CARRY),
+	.ENABLE(		OPCODE == ALU_SUB || OPCODE == ALU_SBC || OPCODE == ALU_CP),
+	.PART_RESULT(	PART_RESULT),
+	.PART_FLAGS(	PART_FLAGS)
+);
+
+AND4 and_instance (
+	.OP1(			OP1_HALF),
+	.OP2(			OP2_HALF),
+	.ENABLE(		OPCODE == ALU_AND),
+	.PART_RESULT(	PART_RESULT),
+	.PART_FLAGS(	PART_FLAGS)
+);
+
+OR4 or_instance (
+	.OP1(			OP1_HALF),
+	.OP2(			OP2_HALF),
+	.ENABLE(		OPCODE == ALU_OR),
+	.PART_RESULT(	PART_RESULT),
+	.PART_FLAGS(	PART_FLAGS)
+);
+
+XOR4 xor_instance (
+	.OP1(			OP1_HALF),
+	.OP2(			OP2_HALF),
+	.ENABLE(		OPCODE == ALU_XOR),
+	.PART_RESULT(	PART_RESULT),
+	.PART_FLAGS(	PART_FLAGS)
+);
+
+endmodule
+
+////////////////////////////////////////////////////////////////
+// FLAG SETTER
+
+module FLAGSETTER (										 			// Set flags according to partial result ONLY
+	input		[ 7: 0]	PART_RESULT,
+	input		[ 1: 0]	PART_FLAGS,
+	output		Z,													// So only the S, Z and P flags are set
+	output		S,
+	output		P,
+	output		V,
+	output		C
+);
+	assign		Z = PART_RESULT == 0;
+	assign		S = PART_RESULT[7];
+	assign		P = ~^PART_RESULT;
+	assign		V =  ^PART_FLAGS;
+	assign		C = PART_FLAGS[1];
+
+endmodule
+
+////////////////////////////////////////////////////////////////
+// DAA
+
+module DAA4(
+	input		[ 3: 0]	OP1,
+	input				CARRY,
+	input				ENABLE,
+	output 		[ 3: 0]	PART_RESULT,
+	output 		[ 1: 0]	PART_FLAGS
+);
+
+	wire			[ 3: 0]	r;
+	wire			[ 3: 0]	c;
+	wire					gt;
+
+assign gt = CARRY || OP1 > 4'h9 ? 1'b1 : 1'b0;						// Greater than 9 or carry
+
+ADDSUB1 add0( r[0], OP1[0], 1'b0, CARRY);							// Now we add 0 or 6 depending on gt
+ADDC1	adc0( c[0], OP1[0], 1'b0, CARRY);
+
+ADDSUB1 add1( r[1], OP1[1], gt, c[0]);								// NB 6 is 0110 in binary, so we add gt for the 1 bits
+ADDC1	adc1( c[1], OP1[1], gt, c[0]);
+
+ADDSUB1 add2( r[2], OP1[2], gt, c[1]);
+ADDC1	adc2( c[2], OP1[2], gt, c[1]);
+
+ADDSUB1 add3( r[3], OP1[3], 1'b0, c[2]);
+ADDC1	adc3( c[3], OP1[3], 1'b0, c[2]);
+
+assign PART_RESULT = ENABLE ?		r : 4'bz;
+assign PART_FLAGS  = ENABLE ?  c[3:2] : 2'bz;
+
+endmodule
+
+////////////////////////////////////////////////////////////////
+// FLG
+
+module FLG48(
+	input		[ 7: 0]	OP1,
+	input				ENABLE,
+	output 		[ 7: 0]	RESULT,
+	output 		[ 1: 0]	PART_FLAGS
+);
+
+assign RESULT		= ENABLE ?  OP1		 : 8'bz;
+assign PART_FLAGS	= ENABLE ?  OP1[3:2] : 2'bz;
+	
+endmodule
+
+////////////////////////////////////////////////////////////////
+// SHL
+
+module SHL48(
+	input		[ 7: 0]	OP1,
+	input				CARRY,
+	input				ENABLE,
+	output 		[ 7: 0]	RESULT,
+	output 		[ 1: 0]	PART_FLAGS
+);
+
+assign RESULT		= ENABLE ?	{ OP1[6:0], CARRY }	: 8'bz;
+assign PART_FLAGS	= ENABLE ?  { OP1[7], OP1[4]  }	: 2'bz;
+
+endmodule
+
+////////////////////////////////////////////////////////////////
+// SHR
+
+module SHR48(
+	input		[ 7: 0]	OP1,
+	input				CARRY,
+	input				ENABLE,
+	output 		[ 7: 0]	RESULT,
+	output 		[ 1: 0]	PART_FLAGS
+);
+
+assign RESULT		= ENABLE ?  { CARRY, OP1[7:1] }	: 8'bz;
+assign PART_FLAGS	= ENABLE ?  { OP1[0], OP1[3] } 	: 2'bz;
+
+endmodule
+
+////////////////////////////////////////////////////////////////
+// ADD/ADC
+
+module ADD4(
+	input		[ 3: 0]	OP1,
+	input		[ 3: 0]	OP2,
+	input				CARRY,
+	input				ENABLE,
+	output 		[ 3: 0]	PART_RESULT,
+	output 		[ 1: 0]	PART_FLAGS
+);
+
+	wire			[ 3: 0]	r;
+	wire			[ 3: 0]	c;
+
+ADDSUB1 add0( r[0], OP1[0], OP2[0], CARRY);
+ADDC1	adc0( c[0], OP1[0], OP2[0], CARRY);
+
+ADDSUB1 add1( r[1], OP1[1], OP2[1], c[0]);
+ADDC1	adc1( c[1], OP1[1], OP2[1], c[0]);
+
+ADDSUB1 add2( r[2], OP1[2], OP2[2], c[1]);
+ADDC1	adc2( c[2], OP1[2], OP2[2], c[1]);
+
+ADDSUB1 add3( r[3], OP1[3], OP2[3], c[2]);
+ADDC1	adc3( c[3], OP1[3], OP2[3], c[2]);
+
+assign PART_RESULT = ENABLE ?		r : 4'bz;
+assign PART_FLAGS  = ENABLE ?  c[3:2] : 2'bz;
+
+endmodule
+
+////////////////////////////////////////////////////////////////
+// SUB/SBC
+
+module SUB4(
+	input		[ 3: 0]	OP1,
+	input		[ 3: 0]	OP2,
+	input				CARRY,
+	input				ENABLE,
+	output 		[ 3: 0]	PART_RESULT,
+	output 		[ 1: 0]	PART_FLAGS
+);
+
+	wire			[ 3: 0]	r;
+	wire			[ 3: 0]	c;
+
+ADDSUB1 add0( r[0], OP1[0], OP2[0], CARRY);
+SUBC1	adc0( c[0], OP1[0], OP2[0], CARRY);
+
+ADDSUB1 add1( r[1], OP1[1], OP2[1], c[0]);
+SUBC1	adc1( c[1], OP1[1], OP2[1], c[0]);
+
+ADDSUB1 add2( r[2], OP1[2], OP2[2], c[1]);
+SUBC1	adc2( c[2], OP1[2], OP2[2], c[1]);
+
+ADDSUB1 add3( r[3], OP1[3], OP2[3], c[2]);
+SUBC1	adc3( c[3], OP1[3], OP2[3], c[2]);
+
+assign PART_RESULT = ENABLE ?		r : 4'bz;
+assign PART_FLAGS  = ENABLE ?  c[3:2] : 2'bz;
+
+endmodule
+
+////////////////////////////////////////////////////////////////
+// AND
+
+module AND4(
+	input		[ 3: 0]	OP1,
+	input		[ 3: 0]	OP2,
+	input  				ENABLE,
+	output		[ 3: 0]	PART_RESULT,
+	output 		[ 1: 0]	PART_FLAGS
+);
+
+	reg			[ 3: 0]	r;
+
+AND1 and0( r[0], OP1[0], OP2[0]);
+
+AND1 and1( r[1], OP1[1], OP2[1]);
+
+AND1 and2( r[2], OP1[2], OP2[2]);
+
+AND1 and3( r[3], OP1[3], OP2[3]);
+
+assign PART_RESULT	= ENABLE ?	   r : 4'bz;
+assign PART_FLAGS   = ENABLE ?  2'b0 : 2'bz;
+
+endmodule
+
+////////////////////////////////////////////////////////////////
+// OR
+
+module OR4(
+	input		[ 3: 0]	OP1,
+	input		[ 3: 0]	OP2,
+	input  				ENABLE,
+	output		[ 3: 0]	PART_RESULT,
+	output 		[ 1: 0]	PART_FLAGS
+);
+
+	reg			[ 3: 0]	r;
+
+OR1 or0( r[0], OP1[0], OP2[0]);
+
+OR1 or1( r[1], OP1[1], OP2[1]);
+
+OR1 or2( r[2], OP1[2], OP2[2]);
+
+OR1 or3( r[3], OP1[3], OP2[3]);
+
+assign PART_RESULT	= ENABLE ?	   r : 4'bz;
+assign PART_FLAGS   = ENABLE ?  2'b0 : 2'bz;
+
+endmodule
+
+////////////////////////////////////////////////////////////////
+// XOR
+
+module XOR4(
+	input		[ 3: 0]	OP1,
+	input		[ 3: 0]	OP2,
+	input  				ENABLE,
+	output		[ 3: 0]	PART_RESULT,
+	output 		[ 1: 0]	PART_FLAGS
+);
+
+	reg			[ 3: 0]	r;
+
+XOR1 xor0( r[0], OP1[0], OP2[0]);
+
+XOR1 xor1( r[1], OP1[1], OP2[1]);
+
+XOR1 xor2( r[2], OP1[2], OP2[2]);
+
+XOR1 xor3( r[3], OP1[3], OP2[3]);
+
+assign PART_RESULT	= ENABLE ?	   r : 4'bz;
+assign PART_FLAGS   = ENABLE ?  2'b0 : 2'bz;
+
+endmodule

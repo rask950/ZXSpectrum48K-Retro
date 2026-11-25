@@ -127,6 +127,28 @@ Z80_ALU ZALU (
 );
 
 	////////////////////////////////////////////////////////////////////////////
+	// New 4 bit Arithmetic unit 
+
+	reg					[ 4: 0]	ALU4_OPCODE;							// ALU operation code
+	reg					[ 7: 0]	ALU4_OP1;								// 1st operand
+	reg					[ 7: 0]	ALU4_OP2;								// 2nd operand
+	reg					[ 7: 0]	ALU4_INFLAGS;							// Flags in
+	reg					[ 7: 0]	ALU4_RESULT;							// Result out
+	reg					[ 7: 0]	ALU4_OUTFLAGS;							// Flags out
+	reg							ALU4_ENABLE;							// 4 bit enable
+
+Z80_ALU4 ZALU4 (
+	.CLK(						CLK),
+	.OPCODE(					ALU4_OPCODE),
+	.OP1(						ALU4_OP1),
+	.OP2(						ALU4_OP2),
+	.INFLAGS(					ALU4_INFLAGS),
+	.RESULT(					ALU4_RESULT),
+	.OUTFLAGS(					ALU4_OUTFLAGS),
+	.ENABLE(					ALU4_ENABLE)
+);
+
+	////////////////////////////////////////////////////////////////////////////
 	// Incrementer
 
 	reg 	 					INC_DIR;								// Direction INC/DEC
@@ -1573,16 +1595,21 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 		end
 
         STATE_M1T4H: begin
-			ALU_OPCODE 			<= { ALU_ARI, OPCODE_REG[5:3] };		// Initialize ALU
-			ALU_OP1				<=`CUR_A;
-			ALU_INFLAGS			<=`CUR_F;
-			ALU_OP2				<= REG.R8[REG8_INDEX];
+			ALU4_OPCODE 			<= { ALU_ARI, OPCODE_REG[5:3] };	// Initialize ALU
+			ALU4_OP1				<=`CUR_A;
+			ALU4_OP2				<= REG.R8[REG8_INDEX];
+			ALU4_INFLAGS			<=`CUR_F;
+			ALU4_ENABLE				<= TRUE;
 		end
 
-		STATE_M1T4L: begin												// Store result and flags back in AF
-		   `CUR_A				<= ALU_RESULT;
-		   `CUR_F				<= ALU_OUTFLAGS;
-			FSM_LAST_M			<= TRUE;								// Instruction complete
+		STATE_M1T4L: begin
+			ALU4_ENABLE				<= FALSE;
+			FSM_LAST_M				<= TRUE;							// Instruction complete
+		end
+
+		STATE_M1T1H: begin												// Store result and flags back in AF
+		   `CUR_A					<= ALU_RESULT;
+		   `CUR_F					<= ALU_OUTFLAGS;
 		end
 
 		endcase
