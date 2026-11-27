@@ -502,22 +502,22 @@ always @(posedge CLK) begin												// Sequential logic for main processor op
 	////////////////////////////////////////////////////////////////////////////
 	// Main instruction decode and execution
 	
-	casez({ IY, IX, EXTD, BITS, OPCODE_REG })
+	casez({ IY|IX, EXTD, BITS, OPCODE_REG })
 
 	////////////////////////////////////////////////////////////////////////////
 	// Instruction prefixes
+
+	PLA_PF_IXIY: begin													// M1(4) IX/IY [DD/FD]
+		if (FSM_STATE == STATE_M1T4L) begin
+		  { IX, IY }			<= { OPCODE_REG[5], ~OPCODE_REG[5] };	// Set either IX or IY but not both
+			FSM_NEXT_STATE.T 	<= STATE_T1H;							// Move next to M1 WITHOUT checking for interrupts
+		end
+	end
 
 	PLA_PF_EXTD: begin													// M1(4) EXTD [ED]
 		if (FSM_STATE == STATE_M1T4L) begin
 			EXTD				<= TRUE;								// Set the flag and get next opcode
 			FSM_NEXT_STATE.T	<= STATE_T1H;							// Move next to M1 WITHOUT checking for interrupts
-		end
-	end
-
-	PLA_PF_IXIY: begin													// M1(4) IX/IY [DD/FD]
-		if (FSM_STATE == STATE_M1T4L) begin
-			{ IX, IY }			<= { OPCODE_REG[5], ~OPCODE_REG[5] };	// Set either IX or IY but not both
-			FSM_NEXT_STATE.T 	<= STATE_T1H;							// Move next to M1 WITHOUT checking for interrupts
 		end
 	end
 

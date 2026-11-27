@@ -24,5 +24,6 @@
         <File path="src/ZX Spectrum.v" type="file.verilog" enable="1"/>
         <File path="src/ZX Spectrum 48K.cst" type="file.cst" enable="1"/>
         <File path="src/ZX Spectrum 48K.sdc" type="file.sdc" enable="1"/>
+        <File path="src/Z80/Z80_ALU4.v.bak" type="file.other" enable="1"/>
     </FileList>
 </Project>
